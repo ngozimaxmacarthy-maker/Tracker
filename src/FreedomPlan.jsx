@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 // ─── Constants ───────────────────────────────────────────────────────────────
 
 const SAVING_TARGET = 10000;
+const API_KEY = import.meta.env.VITE_ANTHROPIC_API_KEY;
 
 const GOAL_STEPS = {
   notary: {
@@ -50,11 +51,11 @@ const ROADMAP = [
 ];
 
 const STATUS_CONFIG = {
-  "Saved":        { color: "#555",    bg: "#1A1A1A", dot: "#555" },
-  "Applied":      { color: "#5B8FFF", bg: "#0D1829", dot: "#5B8FFF" },
-  "Interviewing": { color: "#E8C547", bg: "#1A1600", dot: "#E8C547" },
-  "Offer":        { color: "#7ED8A4", bg: "#0A1A10", dot: "#7ED8A4" },
-  "Rejected":     { color: "#FF7A5C", bg: "#1A0D0A", dot: "#FF7A5C" },
+  "Saved":        { color: "#555",    bg: "#1A1A1A" },
+  "Applied":      { color: "#5B8FFF", bg: "#0D1829" },
+  "Interviewing": { color: "#E8C547", bg: "#1A1600" },
+  "Offer":        { color: "#7ED8A4", bg: "#0A1A10" },
+  "Rejected":     { color: "#FF7A5C", bg: "#1A0D0A" },
 };
 
 const EDUCATION_KEYWORDS = [
@@ -69,15 +70,33 @@ const SENIOR_KEYWORDS = ["senior","lead","manager","director","sr.","principal",
 
 function isGoodFit(role, company) {
   const text = `${role} ${company}`.toLowerCase();
-  const hasEducation = EDUCATION_KEYWORDS.some(k => text.includes(k));
-  const isExcluded = EXCLUDED_KEYWORDS.some(k => text.includes(k));
-  const isSenior = SENIOR_KEYWORDS.some(k => text.includes(k));
-  return hasEducation && !isExcluded && isSenior;
+  return EDUCATION_KEYWORDS.some(k => text.includes(k))
+    && !EXCLUDED_KEYWORDS.some(k => text.includes(k))
+    && SENIOR_KEYWORDS.some(k => text.includes(k));
 }
 
 function daysSince(dateStr) {
   if (!dateStr) return null;
   return Math.floor((new Date() - new Date(dateStr)) / 86400000);
+}
+
+async function callClaude(prompt, maxTokens = 1000) {
+  const res = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": API_KEY,
+      "anthropic-version": "2023-06-01",
+      "anthropic-dangerous-direct-browser-access": "true",
+    },
+    body: JSON.stringify({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: maxTokens,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+  const data = await res.json();
+  return data.content?.find(b => b.type === "text")?.text || "";
 }
 
 // ─── Sub-components ──────────────────────────────────────────────────────────
@@ -87,6 +106,12 @@ function StalenessTag({ days }) {
   if (days <= 3)  return <Tag c="#7ED8A4" bg="#0A1A10">Fresh</Tag>;
   if (days <= 10) return <Tag c="#E8C547" bg="#1A1600">{days}d ago</Tag>;
   return <Tag c="#FF7A5C" bg="#1A0D0A">⚠ {days}d — follow up?</Tag>;
+}
+
+function TimeTag({ estimate }) {
+  if (!estimate) return null;
+  const isQuick = estimate.toLowerCase().includes("resume only") || estimate.includes("5 min") || estimate.includes("10 min");
+  return <Tag c={isQuick ? "#7ED8A4" : "#E8C547"} bg={isQuick ? "#0A1A10" : "#1A1600"}>⏱ {estimate}</Tag>;
 }
 
 function Tag({ c, bg, children }) {
@@ -123,17 +148,28 @@ function Input({ value, onChange, placeholder, type = "text", style = {} }) {
   );
 }
 
+function SmallBtn({ onClick, disabled, color = "#333", children }) {
+  return (
+    <button onClick={onClick} disabled={disabled} style={{
+      background: "transparent", border: "1px solid #1A1A1A", borderRadius: 2,
+      padding: "4px 8px", color: disabled ? "#222" : color,
+      fontSize: 10, fontFamily: "monospace", cursor: disabled ? "not-allowed" : "pointer",
+      opacity: disabled ? 0.5 : 1,
+    }}>{children}</button>
+  );
+}
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function FreedomPlan() {
   const [tab, setTab] = useState("jobs");
 
   const SEED_JOBS = [
-    { id: "lj6", company: "The Luminos Fund", role: "Associate Director, Teaching & Learning", location: "Remote (GMT to GMT+4) or Boston/London/Accra", salary: "Verify ≥ $150k — nonprofit, confirm before applying", status: "Saved", appliedDate: "", url: "https://the-luminos-fund.breezy.hr/p/30ea355fadb9-associate-director-teaching-and-learning", notes: "⭐ Priority. Ghana + PYP + Zearn curriculum = near-perfect match. International nonprofit. Requires sample teacher guide/lesson plan. NO AI applications — write in your own voice. Verify salary first.", source: "manual" },
-    { id: "lj2", company: "Affirm", role: "Senior Manager, Learning", location: "New York, NY", salary: "Verify ≥ $150k", status: "Saved", appliedDate: "", url: "https://www.linkedin.com/comm/jobs/view/4366537975/", notes: "🔥 Top pick. Fintech L&D, NYC, step up from current role. Confirm salary before applying.", source: "linkedin" },
-    { id: "lj3", company: "General Motors", role: "Learning Program Manager, Corporate Staff", location: "United States", salary: "Verify ≥ $150k", status: "Saved", appliedDate: "", url: "https://www.linkedin.com/comm/jobs/view/4406666626/", notes: "Corporate workforce learning. Strong match for training background. 1 connection — reach out.", source: "linkedin" },
-    { id: "lj4", company: "MaintainX", role: "Educational Program Manager", location: "United States", salary: "Verify ≥ $150k", status: "Saved", appliedDate: "", url: "https://www.linkedin.com/comm/jobs/view/4405766054/", notes: "Education-focused. Check salary — may be below floor. Good for contract/consulting conversation.", source: "linkedin" },
-    { id: "lj5", company: "UBC", role: "Manager, Program Management", location: "United States", salary: "Verify ≥ $150k", status: "Saved", appliedDate: "", url: "https://www.linkedin.com/comm/jobs/view/4403795837/", notes: "University / higher ed. Actively hiring. Confirm remote status and comp before applying.", source: "linkedin" },
+    { id: "lj6", company: "The Luminos Fund", role: "Associate Director, Teaching & Learning", location: "Remote (GMT to GMT+4) or Boston/London/Accra", salary: "Verify ≥ $150k — nonprofit, confirm before applying", status: "Saved", appliedDate: "", url: "https://the-luminos-fund.breezy.hr/p/30ea355fadb9-associate-director-teaching-and-learning", notes: "⭐ Priority. Ghana + PYP + Zearn curriculum = near-perfect match. International nonprofit. Requires sample teacher guide/lesson plan. NO AI applications — write in your own voice. Verify salary first.", source: "manual", archived: false, timeEstimate: "" },
+    { id: "lj2", company: "Affirm", role: "Senior Manager, Learning", location: "New York, NY", salary: "Verify ≥ $150k", status: "Saved", appliedDate: "", url: "https://www.linkedin.com/comm/jobs/view/4366537975/", notes: "🔥 Top pick. Fintech L&D, NYC, step up from current role. Confirm salary before applying.", source: "linkedin", archived: false, timeEstimate: "" },
+    { id: "lj3", company: "General Motors", role: "Learning Program Manager, Corporate Staff", location: "United States", salary: "Verify ≥ $150k", status: "Saved", appliedDate: "", url: "https://www.linkedin.com/comm/jobs/view/4406666626/", notes: "Corporate workforce learning. Strong match for training background. 1 connection — reach out.", source: "linkedin", archived: false, timeEstimate: "" },
+    { id: "lj4", company: "MaintainX", role: "Educational Program Manager", location: "United States", salary: "Verify ≥ $150k", status: "Saved", appliedDate: "", url: "https://www.linkedin.com/comm/jobs/view/4405766054/", notes: "Education-focused. Check salary — may be below floor. Good for contract/consulting conversation.", source: "linkedin", archived: false, timeEstimate: "" },
+    { id: "lj5", company: "UBC", role: "Manager, Program Management", location: "United States", salary: "Verify ≥ $150k", status: "Saved", appliedDate: "", url: "https://www.linkedin.com/comm/jobs/view/4403795837/", notes: "University / higher ed. Actively hiring. Confirm remote status and comp before applying.", source: "linkedin", archived: false, timeEstimate: "" },
   ];
 
   const [goals, setGoals] = useState(GOAL_STEPS);
@@ -159,9 +195,11 @@ export default function FreedomPlan() {
   const [showAdd, setShowAdd] = useState(false);
   const [editId, setEditId] = useState(null);
   const [filterStatus, setFilterStatus] = useState("All");
+  const [showArchived, setShowArchived] = useState(false);
   const [urlInput, setUrlInput] = useState("");
   const [fetchingUrl, setFetchingUrl] = useState(false);
-  const [form, setForm] = useState({ company: "", role: "", location: "", salary: "", status: "Saved", appliedDate: "", url: "", notes: "", source: "manual" });
+  const [estimatingId, setEstimatingId] = useState(null);
+  const [form, setForm] = useState({ company: "", role: "", location: "", salary: "", status: "Saved", appliedDate: "", url: "", notes: "", source: "manual", archived: false, timeEstimate: "" });
 
   useEffect(() => { if (!storageReady) return; try { localStorage.setItem("fp_goals", JSON.stringify(goals)); } catch {} }, [goals, storageReady]);
   useEffect(() => { if (!storageReady) return; try { localStorage.setItem("fp_jobs", JSON.stringify(jobs)); } catch {} }, [jobs, storageReady]);
@@ -171,13 +209,15 @@ export default function FreedomPlan() {
   const getProgress = (gk) => { const s = goals[gk].steps; return Math.round(s.filter(x => x.done).length / s.length * 100); };
 
   const updateJobStatus = (id, status) => setJobs(p => p.map(j => j.id !== id ? j : { ...j, status, appliedDate: status === "Applied" && !j.appliedDate ? new Date().toISOString().split("T")[0] : j.appliedDate }));
+  const archiveJob = (id) => setJobs(p => p.map(j => j.id === id ? { ...j, archived: true } : j));
+  const unarchiveJob = (id) => setJobs(p => p.map(j => j.id === id ? { ...j, archived: false } : j));
   const deleteJob = (id) => setJobs(p => p.filter(j => j.id !== id));
 
   const saveForm = () => {
     if (!form.company && !form.role) return;
     if (editId) { setJobs(p => p.map(j => j.id === editId ? { ...j, ...form } : j)); setEditId(null); }
     else setJobs(p => [...p, { ...form, id: Date.now().toString() }]);
-    setForm({ company: "", role: "", location: "", salary: "", status: "Saved", appliedDate: "", url: "", notes: "", source: "manual" });
+    setForm({ company: "", role: "", location: "", salary: "", status: "Saved", appliedDate: "", url: "", notes: "", source: "manual", archived: false, timeEstimate: "" });
     setShowAdd(false);
   };
 
@@ -187,16 +227,19 @@ export default function FreedomPlan() {
     if (!urlInput.trim()) return;
     setFetchingUrl(true);
     try {
-      const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          model: "claude-sonnet-4-20250514", max_tokens: 1000,
-          tools: [{ type: "web_search_20250305", name: "web_search" }],
-          messages: [{ role: "user", content: `Fetch this job posting and extract details: ${urlInput}\nReturn ONLY valid JSON (no markdown): { "company": "", "role": "", "location": "", "salary": "", "notes": "" }` }]
-        })
-      });
-      const data = await res.json();
-      const text = data.content?.find(b => b.type === "text")?.text || "";
+      const text = await callClaude(
+        `Visit this job posting URL and extract the details: ${urlInput}
+
+Return ONLY valid JSON with no markdown fences:
+{
+  "company": "Company name",
+  "role": "Job title",
+  "location": "Location or Remote",
+  "salary": "Salary range if listed, else empty string",
+  "notes": "1–2 sentence summary of what makes this role notable",
+  "timeEstimate": "Estimated time to complete the application. Be specific, e.g. '~5 min (resume only)', '~20 min (resume + 4 screening questions)', '~45 min (resume + cover letter + 8 questions)'. Base this on what the application process typically looks like for this type of role/company."
+}`
+      );
       const match = text.match(/{[\s\S]*}/);
       if (match) {
         const p = JSON.parse(match[0]);
@@ -207,86 +250,99 @@ export default function FreedomPlan() {
     setUrlInput("");
   };
 
+  const estimateTime = async (job) => {
+    if (!job.url || !API_KEY) return;
+    setEstimatingId(job.id);
+    try {
+      const text = await callClaude(
+        `Look up this job posting: ${job.url}
+Role: ${job.role} at ${job.company}
+
+Estimate how long the application will take to complete. Consider:
+- Does it require just a resume upload?
+- Does it ask screening questions? How many?
+- Does it require a cover letter?
+- Does it require work samples or assessments?
+
+Reply with ONLY a short estimate string like these examples:
+"~5 min (resume only)"
+"~15 min (resume + 3 screening questions)"
+"~30 min (resume + cover letter + 6 questions)"
+"~45 min (resume + cover letter + writing sample)"
+
+Return just the estimate string, nothing else.`
+      );
+      const estimate = text.trim().replace(/^["']|["']$/g, "");
+      setJobs(p => p.map(j => j.id === job.id ? { ...j, timeEstimate: estimate } : j));
+    } catch {}
+    setEstimatingId(null);
+  };
+
   const importFromLinkedIn = async () => {
     setImporting(true);
     setImportLog("Checking Gmail for LinkedIn job alerts…");
     try {
       const res = await fetch("https://api.anthropic.com/v1/messages", {
-        method: "POST", headers: { "Content-Type": "application/json" },
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": API_KEY,
+          "anthropic-version": "2023-06-01",
+          "anthropic-dangerous-direct-browser-access": "true",
+        },
         body: JSON.stringify({
           model: "claude-sonnet-4-20250514", max_tokens: 2000,
           mcp_servers: [{ type: "url", url: "https://gmailmcp.googleapis.com/mcp/v1", name: "gmail-mcp" }],
           messages: [{
             role: "user",
-            content: `Search Gmail for the most recent email from jobalerts-noreply@linkedin.com (newer than 2 days). Get the full thread content.
+            content: `Search Gmail for the most recent email from jobalerts-noreply@linkedin.com (newer than 2 days). Extract ALL job listings and return a raw JSON array (no markdown):
+[{ "company": "", "role": "", "location": "", "salary": "", "url": "", "fit": true/false }]
 
-Extract ALL job listings from the email body. For each job, return a JSON array (no markdown, no explanation, just raw JSON array):
-[
-{
-  "company": "Company name",
-  "role": "Job title",
-  "location": "Location or Remote",
-  "salary": "Salary if mentioned, else empty string",
-  "url": "LinkedIn job URL from the email",
-  "fit": true or false
-}
-]
-
-Set fit=true ONLY if ALL of these are true:
-
-1. Role is in education, edtech, K-12, workforce development, learning & development, or training
-2. Role is senior-level: Senior, Manager, Lead, Director, Sr., Principal, or Head of
-3. Company is NOT a staffing agency or recruiter (exclude: Synergis, RemoteHunter, Joveo AI unless clearly education-focused)
-
-Return the raw JSON array only.`
+Set fit=true only if: role is education/edtech/L&D/workforce dev AND senior-level (Senior/Manager/Lead/Director/Principal/Head of) AND company is NOT a staffing agency.`
           }]
         })
       });
-
       const data = await res.json();
       const text = data.content?.filter(b => b.type === "text").map(b => b.text).join("") || "";
       const match = text.match(/\[[\s\S]*\]/);
-
       if (match) {
         const allJobs = JSON.parse(match[0]);
         const goodFit = allJobs.filter(j => j.fit === true);
         const existingUrls = new Set(jobs.map(j => j.url));
         const newJobs = goodFit.filter(j => j.url && !existingUrls.has(j.url));
-
         if (newJobs.length > 0) {
           setJobs(p => [...p, ...newJobs.map(j => ({
             id: Date.now().toString() + Math.random(),
-            company: j.company || "",
-            role: j.role || "",
-            location: j.location || "",
-            salary: j.salary || "",
-            url: j.url || "",
-            notes: "",
-            status: "Saved",
-            appliedDate: "",
-            source: "linkedin",
+            company: j.company || "", role: j.role || "", location: j.location || "",
+            salary: j.salary || "", url: j.url || "", notes: "",
+            status: "Saved", appliedDate: "", source: "linkedin", archived: false, timeEstimate: "",
           }))]);
-          setImportLog(`✓ Added ${newJobs.length} new education-aligned role${newJobs.length > 1 ? "s" : ""} from LinkedIn. ${allJobs.length - goodFit.length} filtered out.`);
+          setImportLog(`✓ Added ${newJobs.length} new role${newJobs.length > 1 ? "s" : ""}. ${allJobs.length - goodFit.length} filtered out.`);
         } else {
-          setImportLog(`No new matching roles found. ${allJobs.length} jobs scanned, none passed the education + seniority filter.`);
+          setImportLog(`No new matching roles. ${allJobs.length} scanned.`);
         }
       } else {
-        setImportLog("Couldn't parse jobs from the email. Try again or check your LinkedIn alerts are arriving.");
+        setImportLog("Couldn't parse jobs. Check your LinkedIn alerts are arriving.");
       }
     } catch {
-      setImportLog("Import failed. Make sure Gmail is connected in your Claude settings.");
+      setImportLog("Import failed. Add your API key to Vercel env vars.");
     }
     setImporting(false);
   };
 
-  const filteredJobs = filterStatus === "All" ? jobs : jobs.filter(j => j.status === filterStatus);
+  const activeJobs = jobs.filter(j => !j.archived);
+  const archivedJobs = jobs.filter(j => j.archived);
+  const displayedJobs = showArchived
+    ? archivedJobs
+    : (filterStatus === "All" ? activeJobs : activeJobs.filter(j => j.status === filterStatus));
+
   const savingsPct = Math.min((savings / SAVING_TARGET) * 100, 100);
 
   const jobStats = {
-    total: jobs.length,
-    applied: jobs.filter(j => j.status === "Applied").length,
-    interviewing: jobs.filter(j => j.status === "Interviewing").length,
-    offers: jobs.filter(j => j.status === "Offer").length,
+    total: activeJobs.length,
+    applied: activeJobs.filter(j => j.status === "Applied").length,
+    interviewing: activeJobs.filter(j => j.status === "Interviewing").length,
+    offers: activeJobs.filter(j => j.status === "Offer").length,
   };
 
   return (
@@ -307,7 +363,6 @@ Return the raw JSON array only.`
                 Financial Independence<br /><span style={{ color: "#E8C547" }}>on your terms.</span>
               </h1>
             </div>
-            {/* savings mini */}
             <div style={{ textAlign: "right" }}>
               <p style={{ fontSize: 11, color: "#333", fontFamily: "monospace", marginBottom: 4 }}>Exit Fund</p>
               <p style={{ fontSize: 24, color: savings >= SAVING_TARGET ? "#7ED8A4" : "#E8E4DC", fontWeight: 400 }}>
@@ -339,35 +394,31 @@ Return the raw JSON array only.`
                   <div style={{ fontSize: 9, color: "#333", fontFamily: "monospace", letterSpacing: 2, textTransform: "uppercase", marginTop: 4 }}>{l}</div>
                 </div>
               ))}
-
-              {/* Import button */}
               <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 10, flexWrap: "wrap" }}>
                 {importLog && (
                   <span style={{ fontSize: 11, color: importLog.startsWith("✓") ? "#7ED8A4" : "#555", fontFamily: "monospace", maxWidth: 300 }}>
                     {importLog}
                   </span>
                 )}
-                <button onClick={importFromLinkedIn} disabled={importing} style={{
-                  background: importing ? "#0D1829" : "#0D1829",
-                  border: "1px solid #5B8FFF", borderRadius: 2,
-                  padding: "10px 16px", color: "#5B8FFF",
-                  fontSize: 11, fontFamily: "monospace", cursor: importing ? "not-allowed" : "pointer",
-                  letterSpacing: 1, opacity: importing ? 0.6 : 1,
+                <button onClick={importFromLinkedIn} disabled={importing || !API_KEY} style={{
+                  background: "#0D1829", border: "1px solid #5B8FFF", borderRadius: 2,
+                  padding: "10px 16px", color: "#5B8FFF", fontSize: 11, fontFamily: "monospace",
+                  cursor: (importing || !API_KEY) ? "not-allowed" : "pointer", letterSpacing: 1,
+                  opacity: (importing || !API_KEY) ? 0.4 : 1,
                 }}>
                   {importing ? "Scanning Gmail..." : "⟳ Import from LinkedIn"}
                 </button>
-                <button onClick={() => { setShowAdd(true); setEditId(null); setForm({ company: "", role: "", location: "", salary: "", status: "Saved", appliedDate: "", url: "", notes: "", source: "manual" }); }} style={{
+                <button onClick={() => { setShowAdd(true); setEditId(null); setForm({ company: "", role: "", location: "", salary: "", status: "Saved", appliedDate: "", url: "", notes: "", source: "manual", archived: false, timeEstimate: "" }); }} style={{
                   background: "#E8C547", border: "none", borderRadius: 2,
-                  padding: "10px 16px", color: "#080808",
-                  fontSize: 11, fontFamily: "monospace", cursor: "pointer",
-                  letterSpacing: 1, fontWeight: 700,
+                  padding: "10px 16px", color: "#080808", fontSize: 11, fontFamily: "monospace",
+                  cursor: "pointer", letterSpacing: 1, fontWeight: 700,
                 }}>+ Add Job</button>
               </div>
             </div>
 
             {/* Filters */}
-            <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap" }}>
-              {["All", ...Object.keys(STATUS_CONFIG)].map(s => {
+            <div style={{ display: "flex", gap: 6, marginBottom: 20, flexWrap: "wrap", alignItems: "center" }}>
+              {!showArchived && ["All", ...Object.keys(STATUS_CONFIG)].map(s => {
                 const cfg = STATUS_CONFIG[s];
                 return (
                   <button key={s} onClick={() => setFilterStatus(s)} style={{
@@ -376,9 +427,18 @@ Return the raw JSON array only.`
                     color: filterStatus === s ? (cfg?.color || "#E8E4DC") : "#444",
                     padding: "5px 12px", borderRadius: 2, fontSize: 10,
                     fontFamily: "monospace", cursor: "pointer", letterSpacing: 1,
-                  }}>{s} {s !== "All" && <span style={{ opacity: 0.5 }}>{jobs.filter(j => j.status === s).length}</span>}</button>
+                  }}>{s} {s !== "All" && <span style={{ opacity: 0.5 }}>{activeJobs.filter(j => j.status === s).length}</span>}</button>
                 );
               })}
+              <button onClick={() => { setShowArchived(v => !v); setFilterStatus("All"); }} style={{
+                background: showArchived ? "#1A1A1A" : "transparent",
+                border: `1px solid ${showArchived ? "#555" : "#1E1E1E"}`,
+                color: showArchived ? "#888" : "#333",
+                padding: "5px 12px", borderRadius: 2, fontSize: 10,
+                fontFamily: "monospace", cursor: "pointer", letterSpacing: 1, marginLeft: "auto",
+              }}>
+                {showArchived ? "← Back" : `Archived ${archivedJobs.length > 0 ? `(${archivedJobs.length})` : ""}`}
+              </button>
             </div>
 
             {/* Add/Edit form */}
@@ -389,13 +449,25 @@ Return the raw JSON array only.`
                 </p>
                 {!editId && (
                   <div style={{ marginBottom: 16 }}>
-                    <p style={{ color: "#444", fontSize: 11, fontFamily: "monospace", marginBottom: 6 }}>Paste a job URL to auto-fill</p>
+                    <p style={{ color: "#444", fontSize: 11, fontFamily: "monospace", marginBottom: 6 }}>
+                      Paste a job URL to auto-fill {!API_KEY && <span style={{ color: "#FF7A5C" }}>(add VITE_ANTHROPIC_API_KEY to Vercel to enable)</span>}
+                    </p>
                     <div style={{ display: "flex", gap: 8 }}>
                       <Input value={urlInput} onChange={e => setUrlInput(e.target.value)} placeholder="https://linkedin.com/jobs/view/..." style={{ flex: 1 }} />
-                      <button onClick={fetchUrl} disabled={fetchingUrl} style={{ background: "#1A2540", border: "1px solid #5B8FFF", borderRadius: 2, padding: "9px 14px", color: "#5B8FFF", fontSize: 11, fontFamily: "monospace", cursor: "pointer" }}>
-                        {fetchingUrl ? "..." : "Fetch"}
+                      <button onClick={fetchUrl} disabled={fetchingUrl || !API_KEY} style={{
+                        background: "#1A2540", border: "1px solid #5B8FFF", borderRadius: 2,
+                        padding: "9px 14px", color: "#5B8FFF", fontSize: 11, fontFamily: "monospace",
+                        cursor: (fetchingUrl || !API_KEY) ? "not-allowed" : "pointer",
+                        opacity: (fetchingUrl || !API_KEY) ? 0.5 : 1,
+                      }}>
+                        {fetchingUrl ? "Fetching…" : "Fetch + Estimate"}
                       </button>
                     </div>
+                    {form.timeEstimate && (
+                      <p style={{ marginTop: 8, fontSize: 11, color: "#E8C547", fontFamily: "monospace" }}>
+                        ⏱ {form.timeEstimate}
+                      </p>
+                    )}
                   </div>
                 )}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 12 }}>
@@ -432,18 +504,21 @@ Return the raw JSON array only.`
             )}
 
             {/* Job cards */}
-            {filteredJobs.length === 0 ? (
+            {displayedJobs.length === 0 ? (
               <div style={{ textAlign: "center", padding: "60px 0", color: "#222" }}>
-                <p style={{ fontSize: 40, marginBottom: 12 }}>📭</p>
-                <p style={{ fontFamily: "monospace", fontSize: 13 }}>No jobs here. Hit "Import from LinkedIn" or add one manually.</p>
+                <p style={{ fontSize: 40, marginBottom: 12 }}>{showArchived ? "🗂" : "📭"}</p>
+                <p style={{ fontFamily: "monospace", fontSize: 13 }}>
+                  {showArchived ? "No archived jobs." : `No jobs here. Hit "Import from LinkedIn" or add one manually.`}
+                </p>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                {filteredJobs.map(job => {
+                {displayedJobs.map(job => {
                   const cfg = STATUS_CONFIG[job.status] || STATUS_CONFIG["Saved"];
                   const days = daysSince(job.appliedDate);
+                  const isEstimating = estimatingId === job.id;
                   return (
-                    <div key={job.id} style={{ background: "#0C0C0C", border: "1px solid #161616", borderLeft: `3px solid ${cfg.color}`, borderRadius: 3, padding: "14px 18px" }}>
+                    <div key={job.id} style={{ background: "#0C0C0C", border: "1px solid #161616", borderLeft: `3px solid ${job.archived ? "#222" : cfg.color}`, borderRadius: 3, padding: "14px 18px", opacity: job.archived ? 0.6 : 1 }}>
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12, flexWrap: "wrap" }}>
                         <div style={{ flex: 1, minWidth: 180 }}>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
@@ -452,6 +527,7 @@ Return the raw JSON array only.`
                             <span style={{ fontSize: 14, color: "#5B8FFF" }}>{job.company}</span>
                             {job.source === "linkedin" && <Tag c="#333" bg="#111">LinkedIn</Tag>}
                             {days !== null && <StalenessTag days={days} />}
+                            {job.timeEstimate && <TimeTag estimate={job.timeEstimate} />}
                           </div>
                           <div style={{ display: "flex", gap: 14, flexWrap: "wrap" }}>
                             {job.location && <span style={{ fontSize: 11, color: "#444", fontFamily: "monospace" }}>📍 {job.location}</span>}
@@ -460,13 +536,29 @@ Return the raw JSON array only.`
                           </div>
                           {job.notes && <p style={{ fontSize: 12, color: "#3A3A3A", marginTop: 5, fontStyle: "italic" }}>{job.notes}</p>}
                         </div>
-                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-                          <select value={job.status} onChange={e => updateJobStatus(job.id, e.target.value)} style={{ background: cfg.bg, border: `1px solid ${cfg.color}`, borderRadius: 2, padding: "4px 8px", color: cfg.color, fontSize: 10, fontFamily: "monospace", cursor: "pointer", outline: "none", letterSpacing: 1 }}>
-                            {Object.keys(STATUS_CONFIG).map(s => <option key={s}>{s}</option>)}
-                          </select>
-                          <button onClick={() => startEdit(job)} style={{ background: "transparent", border: "1px solid #1A1A1A", borderRadius: 2, padding: "4px 8px", color: "#333", fontSize: 10, fontFamily: "monospace", cursor: "pointer" }}>Edit</button>
-                          {job.url && <a href={job.url} target="_blank" rel="noreferrer" style={{ background: "transparent", border: "1px solid #1A1A1A", borderRadius: 2, padding: "4px 8px", color: "#333", fontSize: 10, fontFamily: "monospace", textDecoration: "none" }}>↗</a>}
-                          <button onClick={() => deleteJob(job.id)} style={{ background: "transparent", border: "none", color: "#222", fontSize: 16, cursor: "pointer", padding: "2px 4px" }}>×</button>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, flexWrap: "wrap" }}>
+                          {!job.archived && (
+                            <select value={job.status} onChange={e => updateJobStatus(job.id, e.target.value)} style={{ background: cfg.bg, border: `1px solid ${cfg.color}`, borderRadius: 2, padding: "4px 8px", color: cfg.color, fontSize: 10, fontFamily: "monospace", cursor: "pointer", outline: "none", letterSpacing: 1 }}>
+                              {Object.keys(STATUS_CONFIG).map(s => <option key={s}>{s}</option>)}
+                            </select>
+                          )}
+                          {!job.archived && (
+                            <SmallBtn onClick={() => startEdit(job)}>Edit</SmallBtn>
+                          )}
+                          {job.url && !job.archived && API_KEY && !job.timeEstimate && (
+                            <SmallBtn onClick={() => estimateTime(job)} disabled={isEstimating} color="#E8C547">
+                              {isEstimating ? "…" : "⏱ Estimate"}
+                            </SmallBtn>
+                          )}
+                          {job.url && (
+                            <a href={job.url} target="_blank" rel="noreferrer" style={{ background: "transparent", border: "1px solid #1A1A1A", borderRadius: 2, padding: "4px 8px", color: "#333", fontSize: 10, fontFamily: "monospace", textDecoration: "none" }}>↗</a>
+                          )}
+                          {job.archived ? (
+                            <SmallBtn onClick={() => unarchiveJob(job.id)} color="#5B8FFF">Restore</SmallBtn>
+                          ) : (
+                            <SmallBtn onClick={() => archiveJob(job.id)} color="#555">Archive</SmallBtn>
+                          )}
+                          <SmallBtn onClick={() => { if (window.confirm(`Delete "${job.role}" permanently?`)) deleteJob(job.id); }} color="#FF7A5C">Delete</SmallBtn>
                         </div>
                       </div>
                     </div>
@@ -476,14 +568,16 @@ Return the raw JSON array only.`
             )}
 
             {/* Weekly rhythm footer */}
-            <div style={{ marginTop: 32, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-              {[["Internal — this week", "Send 2 applications. Mark saved jobs as Applied."], ["External — this week", "DM 1 person. Go to 1 event. Ask for 1 intro."]].map(([t, d]) => (
-                <div key={t} style={{ background: "#0C0C0C", border: "1px solid #161616", borderRadius: 3, padding: "16px 18px" }}>
-                  <p style={{ color: "#333", fontSize: 9, fontFamily: "monospace", letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>{t}</p>
-                  <p style={{ fontSize: 13, color: "#666" }}>{d}</p>
-                </div>
-              ))}
-            </div>
+            {!showArchived && (
+              <div style={{ marginTop: 32, display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                {[["Internal — this week", "Send 2 applications. Mark saved jobs as Applied."], ["External — this week", "DM 1 person. Go to 1 event. Ask for 1 intro."]].map(([t, d]) => (
+                  <div key={t} style={{ background: "#0C0C0C", border: "1px solid #161616", borderRadius: 3, padding: "16px 18px" }}>
+                    <p style={{ color: "#333", fontSize: 9, fontFamily: "monospace", letterSpacing: 3, textTransform: "uppercase", marginBottom: 6 }}>{t}</p>
+                    <p style={{ fontSize: 13, color: "#666" }}>{d}</p>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
