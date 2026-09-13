@@ -1,2 +1,37 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: #080808; }
+
+:root {
+  --bg: #F4F7FC;
+  color-scheme: light;
+}
+
+body {
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Numbers line up in columns when they share a width. */
+.tnum { font-variant-numeric: tabular-nums; }
+
+button { font: inherit; }
+
+input, select {
+  font: inherit;
+  accent-color: #1B5CF3;
+}
+input:focus-visible, select:focus-visible, button:focus-visible {
+  outline: 2px solid #1B5CF3;
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+
+/* The header metric hangs right beside the title on desktop, but once the flex
+   row wraps on a phone it should align with everything else. */
+.hero-metric { text-align: right; }
+@media (max-width: 640px) {
+  .hero-metric { text-align: left; }
+}

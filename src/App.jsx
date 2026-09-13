@@ -1,5 +1,5 @@
-import FreedomPlan from "./FreedomPlan";
+import PerkTracker from "./PerkTracker";
 
 export default function App() {
-  return <FreedomPlan />;
+  return <PerkTracker />;
 }
