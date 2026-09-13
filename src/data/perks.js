@@ -74,6 +74,16 @@ export const PERKS = [
     note: "US rideshare purchases. Separate from the Platinum Uber Cash credit.",
   },
   {
+    id: "csp_doordash", card: "csp", name: "DoorDash credit",
+    value: 10, cadence: "monthly", needsVerification: true,
+    note: "Non-restaurant orders only \u2014 grocery, convenience, retail. Requires an active DashPass and the offer has to be toggled on before you submit the order.",
+  },
+  {
+    id: "bilt_spend", card: "bilt_obsidian", name: "Spend $899 on the card",
+    value: 0, cadence: "monthly", nonCash: true, actionLabel: "Hit $899",
+    note: "Bilt sets your housing rate from non-housing spend. Clearing $899 keeps the HOA payment earning 1.25x instead of drifting toward zero \u2014 no statement credit, but the most expensive line here to miss.",
+  },
+  {
     id: "bofa_category", card: "bofa_cash", name: "Select 3% category",
     value: 0, cadence: "monthly", nonCash: true, actionLabel: "Category chosen",
     note: "Must be actively selected each month or it stays on last month's pick.",
@@ -195,7 +205,7 @@ export const SETUP_TASKS = [
   { id: "s_uber",  card: "amex_platinum",  label: "Add Platinum as a payment method in the Uber app", detail: "Uber Cash will not load until the card is attached to the Uber account." },
   { id: "s_air",   card: "amex_platinum",  label: "Select your airline for incidental credits",     detail: "Amex account → Airline Fee Credit. One airline per calendar year — pick before you fly." },
   { id: "s_equinox", card: "amex_platinum",  label: "Only if you join Equinox: put the Platinum on file", detail: "Worth $25 a month, but only once Equinox bills this card. Enrolment must also precede the first charge \u2014 it does not backdate." },
-  { id: "s_dash",   card: "csp",             label: "Activate the DoorDash DashPass membership", detail: "Free through Dec 31, 2027, but only once you activate it." },
+  { id: "s_dash",   card: "csp",             label: "Activate the DoorDash DashPass membership", detail: "Free through Dec 31, 2027, and the $10 monthly DoorDash credit does not pay without it." },
   { id: "s_prime", card: "amazon_prime_visa", label: "Confirm the Prime membership is active",      detail: "The 5% Amazon/Whole Foods rate depends on an active Prime membership." },
 ];
 
@@ -230,7 +240,8 @@ export const ALWAYS_ON = {
     "Fine Hotels + Resorts benefits: room upgrades, daily breakfast, late checkout.",
   ],
   csp: [
-    "3x points on gas and EV charging, and on vacation rentals like Airbnb and Vrbo.",
+    "5x on Chase Travel, 3x dining, 3x gas and EV charging, 3x streaming and online groceries.",
+    "3x on vacation rentals booked direct \u2014 Airbnb, Vrbo and similar.",
     "Primary rental car coverage, trip delay and cancellation reimbursement, baggage delay insurance.",
     "No foreign transaction fees.",
   ],
@@ -239,7 +250,9 @@ export const ALWAYS_ON = {
     "Main Cabin 1 priority boarding.",
   ],
   bilt_obsidian: [
-    "Rent payments earn points with no transaction fee \u2014 the reason the card exists.",
+    "Rent, mortgage and HOA earn points with no transaction fee \u2014 the reason the card exists.",
+    "4x hotels and 3x flights through Bilt Travel, 3x dining (up to 6x at Bilt partners), 3x groceries.",
+    "The housing rate is set by non-housing spend: $899 a month is the threshold for the full 1.25x.",
   ],
 };
 
