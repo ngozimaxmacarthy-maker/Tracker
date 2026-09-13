@@ -23,6 +23,14 @@ export const CARDS = [
   { id: "freedom_unlimited", name: "Chase Freedom Unlimited",      issuer: "Chase",            fee:   0, tier: "personal", note: "" },
 ];
 
+// Card-year credits turn over on the account anniversary. The owner gave the
+// month only, so the 1st stands in: the countdown runs slightly early, which is
+// the safe direction to be wrong in. Replace with exact dates when known.
+export const DEFAULT_ANNIVERSARIES = {
+  csp: "2025-12-01",
+  united_explorer: "2026-03-01",
+};
+
 export const CARD_BY_ID = Object.fromEntries(CARDS.map(c => [c.id, c]));
 
 // cadence drives the reset clock. See lib/periods.js.
@@ -46,18 +54,19 @@ export const PERKS = [
   },
   {
     id: "amex_equinox", card: "amex_platinum", name: "Equinox credit",
-    value: 25, cadence: "monthly", enrollment: true, needsVerification: true,
+    value: 25, cadence: "monthly", enrollment: true, needsVerification: true, dormant: true,
+    dormantNote: "No Equinox membership billing this card, so this credit cannot pay. Excluded from the monthly total until that changes.",
     note: "Equinox club membership or the Equinox+ app, paid directly with the card. Up to $300 a calendar year. Spa services, day passes and personal training do not count.",
   },
   {
     id: "united_instacart", card: "united_explorer", name: "Instacart credit",
-    value: 10, cadence: "monthly", enrollment: true, needsVerification: true,
+    value: 10, cadence: "monthly", needsVerification: true,
     note: "Purchases made directly through Instacart. Up to $120 a calendar year.",
   },
   {
     id: "united_rideshare", card: "united_explorer", name: "Rideshare credit",
-    value: 5, cadence: "monthly", enrollment: true, needsVerification: true,
-    note: "Enrollment required. Up to $60 a calendar year. This is your third rideshare credit — Platinum and Delta each have their own, and one ride can only feed one of them.",
+    value: 5, cadence: "monthly", needsVerification: true,
+    note: "Posts on use. Up to $60 a calendar year. This is your third rideshare credit — Platinum and Delta each have their own, and one ride can only feed one of them.",
   },
   {
     id: "delta_rideshare", card: "delta_gold_biz", name: "Rideshare credit",
@@ -185,12 +194,8 @@ export const SETUP_TASKS = [
   { id: "s_lulu",  card: "amex_platinum",  label: "Enroll in the lululemon credit",                 detail: "Amex account → Benefits → lululemon." },
   { id: "s_uber",  card: "amex_platinum",  label: "Add Platinum as a payment method in the Uber app", detail: "Uber Cash will not load until the card is attached to the Uber account." },
   { id: "s_air",   card: "amex_platinum",  label: "Select your airline for incidental credits",     detail: "Amex account → Airline Fee Credit. One airline per calendar year — pick before you fly." },
-  { id: "s_equinox", card: "amex_platinum",  label: "Enroll in the Equinox credit",                detail: "Amex account \u2192 Benefits \u2192 Equinox. Must be enrolled BEFORE the first qualifying charge \u2014 enrolling later does not backdate it." },
-  { id: "s_uinsta", card: "united_explorer", label: "Enroll in the United Instacart credit",     detail: "$10 a month, and it only posts on purchases made directly through Instacart." },
-  { id: "s_uride",  card: "united_explorer", label: "Enroll in the United rideshare credit",     detail: "$5 a month. Separate enrollment from the Instacart credit." },
+  { id: "s_equinox", card: "amex_platinum",  label: "Only if you join Equinox: put the Platinum on file", detail: "Worth $25 a month, but only once Equinox bills this card. Enrolment must also precede the first charge \u2014 it does not backdate." },
   { id: "s_dash",   card: "csp",             label: "Activate the DoorDash DashPass membership", detail: "Free through Dec 31, 2027, but only once you activate it." },
-  { id: "s_uanniv", card: "united_explorer", label: "Record your United Explorer anniversary date", detail: "The $100 United Hotels credit resets on the account anniversary, not Jan 1. Set it in Setup." },
-  { id: "s_anniv", card: "csp",            label: "Record your Sapphire Preferred anniversary date", detail: "The $100 Chase Travel hotel credit resets on the account anniversary, not Jan 1. Set it in Setup." },
   { id: "s_prime", card: "amazon_prime_visa", label: "Confirm the Prime membership is active",      detail: "The 5% Amazon/Whole Foods rate depends on an active Prime membership." },
 ];
 

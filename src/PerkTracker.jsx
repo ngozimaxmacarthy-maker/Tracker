@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import {
   CARDS, CARD_BY_ID, PERKS, SETUP_TASKS, SPEND_THRESHOLDS,
-  EARN_ONLY, ALWAYS_ON, CADENCE_META, VERIFIED_ON, OWNER,
+  EARN_ONLY, ALWAYS_ON, CADENCE_META, VERIFIED_ON, OWNER, DEFAULT_ANNIVERSARIES,
 } from "./data/perks";
 import {
   periodFor, daysLeft, valueIn, closedPeriodsInYear,
@@ -35,7 +35,7 @@ const TOTAL_FEES = CARDS.reduce((a, c) => a + c.fee, 0);
 
 /** Recurring dollar value a perk delivers across one full calendar year. */
 function annualValueOf(perk) {
-  if (perk.nonCash) return 0;
+  if (perk.nonCash || perk.dormant) return 0;
   switch (perk.cadence) {
     case "monthly": {
       let sum = 0;
@@ -235,7 +235,7 @@ function PerkRow({ live, draft, setDraft, onLog, onFull, onClear, showCard = tru
 // ─── Main ────────────────────────────────────────────────────────────────────
 
 const DEFAULT_SETTINGS = {
-  anniversaries: {},                       // { cardId: "YYYY-MM-DD" }
+  anniversaries: { ...DEFAULT_ANNIVERSARIES },   // { cardId: "YYYY-MM-DD" }
   globalEntry: { usedOn: "", card: "" },
   spend: {},                               // { cardId: { "2026": 0 } }
   setupDone: {},                           // { taskId: true }
@@ -288,6 +288,10 @@ export default function PerkTracker() {
     const days = daysLeft(period, now);
 
     let locked = false, lockNote = "";
+    if (perk.dormant) {
+      locked = true;
+      lockNote = perk.dormantNote || "Not active on this card yet.";
+    }
     if (perk.requiresSpend) {
       const spent = spendFor(perk.card);
       if (spent < perk.requiresSpend) {
@@ -341,7 +345,7 @@ export default function PerkTracker() {
   const verifiedAge = Math.floor((now - parseYmd(settings.lastVerified || VERIFIED_ON)) / 86400000);
   const unconfirmed = PERKS.filter((p) => p.needsVerification);
   const enrollmentGated = PERKS.filter((p) => p.enrollment).length;
-  const monthlyPerks = PERKS.filter((p) => p.cadence === "monthly" && !p.nonCash);
+  const monthlyPerks = PERKS.filter((p) => p.cadence === "monthly" && !p.nonCash && !p.dormant);
   const monthlyPerMonth = monthlyPerks.reduce((a, p) => a + p.value, 0);
   const monthlyAnnual = monthlyPerks.reduce((a, p) => a + annualValueOf(p), 0);
 
@@ -656,8 +660,10 @@ export default function PerkTracker() {
             <Panel accent={T.blue}>
               <Micro color={T.blue} style={{ marginBottom: 16 }}>What the totals hide</Micro>
               {[
-                ["Your monthly figure was low by $500 a year.",
-                 `The source sheet counted $70 a month. With the Equinox, Instacart and United rideshare credits added it is ${money(monthlyPerMonth)} a month — ${money(monthlyAnnual)} a year once December's larger Uber Cash is counted. Monthly credits are now the single biggest block of value you own, and the easiest to lose.`],
+                ["Monthly credits are the block that actually leaks.",
+                 `${money(monthlyPerMonth)} a month, ${money(monthlyAnnual)} a year once December's larger Uber Cash is counted. They are individually the smallest credits you hold and the only ones that reset twelve times a year, which is exactly why they are the ones that go unused.`],
+                ["The Equinox credit is parked, not counted.",
+                 "Worth $25 a month, but nothing pays out until an Equinox membership bills the Platinum. It sits in the locked list rather than in your totals, so the numbers above are what you can actually claim today."],
                 ["You are carrying three separate rideshare credits.",
                  "Platinum Uber Cash, the Delta rideshare credit and the United rideshare credit all pay out on rides — but one ride only feeds the card you paid with. Getting all three needs three different cards in rotation, not one good month of Ubers."],
                 ["Delta's $200 is a rebate, not a credit.",
