@@ -251,7 +251,7 @@ export const ALWAYS_ON = {
   ],
   bilt_obsidian: [
     "Rent, mortgage and HOA earn points with no transaction fee \u2014 the reason the card exists.",
-    "4x hotels and 3x flights through Bilt Travel, 3x dining (up to 6x at Bilt partners), 3x groceries.",
+    "4x hotels and 3x flights through Bilt Travel. The 3x bonus is ONE category chosen per calendar year \u2014 groceries or dining, capped at $25k. Currently set to groceries, so dining earns 1x here.",
     "The housing rate is set by non-housing spend: $899 a month is the threshold for the full 1.25x.",
   ],
 };
