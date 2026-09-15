@@ -1,0 +1,1032 @@
+<meta charset="utf-8">
+<title>Perk Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Figtree:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
+
+<style>
+  :root {
+    --paper:  #F1F4FA;
+    --sheet:  #FFFFFF;
+    --ink:    #0E1830;
+    --muted:  #5E6E8A;
+    --faint:  #8B99B2;
+    --hair:   #DEE6F1;
+    --hair2:  #EAEFF7;
+    --blue:   #1B5CF3;
+    --blueBg: #EAF1FE;
+    --blueLn: #C7D9FD;
+    --yellow: #FFC400;
+    --gold:   #7A5E00;
+    --goldBg: #FFF7D6;
+    --track:  #E6ECF6;
+    --shadow: 0 1px 2px rgba(14,24,48,.05), 0 1px 3px rgba(14,24,48,.04);
+    --serif: "Instrument Serif", Georgia, "Times New Roman", serif;
+    --sans: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:#0B1119; --sheet:#121C2B; --ink:#E9EFF9; --muted:#94A4BE; --faint:#6C7D99;
+      --hair:#223047; --hair2:#1A2637; --blue:#6E9BFF; --blueBg:#16274A; --blueLn:#2B4372;
+      --yellow:#FFCE2E; --gold:#FFD86B; --goldBg:#2C2409; --track:#1E2A3D;
+      --shadow: 0 1px 2px rgba(0,0,0,.3);
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper:#0B1119; --sheet:#121C2B; --ink:#E9EFF9; --muted:#94A4BE; --faint:#6C7D99;
+    --hair:#223047; --hair2:#1A2637; --blue:#6E9BFF; --blueBg:#16274A; --blueLn:#2B4372;
+    --yellow:#FFCE2E; --gold:#FFD86B; --goldBg:#2C2409; --track:#1E2A3D;
+    --shadow: 0 1px 2px rgba(0,0,0,.3);
+    color-scheme: dark;
+  }
+
+  body { background: var(--paper); color: var(--ink); font-family: var(--sans);
+         font-size: 16px; line-height: 1.5; }
+  .tnum { font-variant-numeric: tabular-nums; }
+
+  .shell { max-width: 880px; margin: 0 auto; padding-inline: 20px; padding-block: 18px 80px; }
+  .list-wrap { max-width: 620px; }
+
+  /* ── Tabs ─────────────────────────────────────────────────── */
+  .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--hair);
+          margin-bottom: 26px; overflow-x: auto; }
+  .tabs button {
+    background: none; border: none; border-bottom: 3px solid transparent;
+    color: var(--muted); font-family: var(--sans); font-size: 14.5px; font-weight: 500;
+    padding: 12px 14px; margin-bottom: -1px; cursor: pointer; white-space: nowrap;
+  }
+  .tabs button[aria-selected="true"] { color: var(--blue); font-weight: 700;
+                                       border-bottom-color: var(--blue); }
+  .tabs button:focus-visible { outline: 2px solid var(--blue); outline-offset: -3px; }
+  .tabs .badge { font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+                 background: var(--yellow); color: #0E1830; border-radius: 99px;
+                 padding: 1px 6px; margin-left: 7px; }
+  [hidden] { display: none !important; }
+
+  /* ── Tab 1: the checklist ─────────────────────────────────── */
+/* ── Masthead ─────────────────────────────────────────────── */
+  .mast {
+    display: flex; justify-content: space-between; align-items: flex-end;
+    gap: 20px; flex-wrap: wrap; margin-bottom: 18px;
+  }
+  .month {
+    font-family: var(--serif);
+    font-size: clamp(40px, 11vw, 58px);
+    line-height: .95; letter-spacing: -.5px; font-weight: 400;
+  }
+  .month .yr { color: var(--faint); }
+  .eyebrow {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 500;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--faint);
+    margin-bottom: 8px;
+  }
+  .left-amt {
+    font-family: var(--mono); font-weight: 700;
+    font-size: clamp(28px, 8vw, 36px); line-height: 1;
+    letter-spacing: -1px; color: var(--ink);
+  }
+  .left-amt.zero { color: var(--blueInk); }
+  .left-lab {
+    font-family: var(--mono); font-size: 11px; color: var(--faint);
+    letter-spacing: .05em; margin-top: 7px;
+  }
+  .mast .r { text-align: right; }
+  @media (max-width: 480px) { .mast .r { text-align: left; } }
+
+  /* ── Progress ─────────────────────────────────────────────── */
+  .prog-track {
+    height: 8px; background: var(--hair); border-radius: 99px; overflow: hidden;
+  }
+  .prog-fill {
+    height: 100%; width: 0%; border-radius: 99px; background: var(--yellow);
+    transition: width .3s ease, background .3s ease;
+  }
+  .prog-fill.full { background: var(--blue); }
+  .prog-meta {
+    display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap;
+    font-family: var(--mono); font-size: 11.5px; color: var(--muted);
+    margin-top: 9px; margin-bottom: 34px;
+  }
+  .prog-meta .urgent { color: var(--gold); font-weight: 700; }
+
+  /* ── Group headings ───────────────────────────────────────── */
+  h2 {
+    font-family: var(--mono); font-size: 10.5px; font-weight: 700;
+    letter-spacing: .16em; text-transform: uppercase; color: var(--faint);
+    margin-bottom: 2px;
+  }
+  .grp { margin-bottom: 34px; }
+  .grp-note {
+    font-size: 13px; color: var(--muted); margin-bottom: 12px;
+  }
+
+  /* ── Ledger rows ──────────────────────────────────────────── */
+  .sheet {
+    background: var(--sheet); border: 1px solid var(--hair);
+    border-radius: 12px; box-shadow: var(--shadow); overflow: hidden;
+  }
+  .row {
+    display: flex; align-items: flex-start; gap: 14px;
+    padding: 15px 17px; cursor: pointer;
+    border-top: 1px solid var(--hair2);
+    transition: background .12s ease;
+  }
+  .row:first-child { border-top: none; }
+  .row:hover { background: var(--blueBg); }
+  .row.locked { cursor: default; }
+  .row.locked:hover { background: transparent; }
+
+  .row input[type="checkbox"] {
+    appearance: none; -webkit-appearance: none;
+    flex: 0 0 auto; width: 22px; height: 22px; margin-top: 1px;
+    border: 1.5px solid var(--hair); border-radius: 6px;
+    background: var(--sheet); cursor: pointer; position: relative;
+    transition: background .12s ease, border-color .12s ease;
+  }
+  .row input[type="checkbox"]:checked {
+    background: var(--blue); border-color: var(--blue);
+  }
+  .row input[type="checkbox"]:checked::after {
+    content: ""; position: absolute; left: 7px; top: 3px;
+    width: 5px; height: 10px; border: solid #fff;
+    border-width: 0 2px 2px 0; transform: rotate(43deg);
+  }
+  .row input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  .body { flex: 1 1 auto; min-width: 0; display: block; }
+  .name { display: block; font-size: 15.5px; font-weight: 600; line-height: 1.3; }
+  .sub {
+    display: block;
+    font-family: var(--mono); font-size: 11.5px; color: var(--faint);
+    margin-top: 4px; letter-spacing: .01em;
+  }
+  .hint { display: block; font-size: 12.5px; color: var(--muted); margin-top: 5px; }
+  .amt {
+    flex: 0 0 auto; font-family: var(--mono); font-weight: 700;
+    font-size: 16px; text-align: right; padding-top: 1px;
+  }
+  .amt .none { color: var(--faint); font-weight: 400; font-size: 12px; }
+
+  .row.done .name { color: var(--faint); text-decoration: line-through; text-decoration-thickness: 1px; }
+  .row.done .amt  { color: var(--faint); text-decoration: line-through; text-decoration-thickness: 1px; }
+  .row.done .sub, .row.done .hint { color: var(--faint); }
+
+  .chip {
+    display: inline-block; font-family: var(--mono); font-size: 10px;
+    font-weight: 700; letter-spacing: .05em; padding: 1px 6px;
+    border-radius: 99px; margin-left: 7px; vertical-align: 1px;
+    background: var(--goldBg); color: var(--gold);
+  }
+  .chip.soon { background: var(--goldBg); color: var(--gold); }
+  .chip.gate { background: var(--hair2); color: var(--muted); }
+
+  /* ── Footer bits ──────────────────────────────────────────── */
+  details {
+    background: var(--sheet); border: 1px solid var(--hair);
+    border-radius: 12px; box-shadow: var(--shadow); overflow: hidden;
+  }
+  summary {
+    padding: 14px 17px; cursor: pointer; font-size: 14px; font-weight: 600;
+    list-style: none; display: flex; justify-content: space-between; gap: 12px;
+  }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; font-family: var(--mono); color: var(--faint); font-weight: 400; }
+  details[open] summary::after { content: "–"; }
+  summary:focus-visible { outline: 2px solid var(--blue); outline-offset: -2px; }
+  summary .cnt { font-family: var(--mono); font-size: 12px; color: var(--faint); font-weight: 400; margin-left: auto; margin-right: 10px; }
+
+  .setup-item { padding: 13px 17px; border-top: 1px solid var(--hair2); display: flex; gap: 13px; align-items: flex-start; cursor: pointer; }
+  .setup-item:hover { background: var(--blueBg); }
+  .setup-item.done .st-name { color: var(--faint); text-decoration: line-through; }
+  .setup-item > span { display: block; min-width: 0; }
+  .st-name { display: block; font-size: 14.5px; font-weight: 600; line-height: 1.35; }
+  .st-sub { display: block; font-size: 12.5px; color: var(--muted); margin-top: 3px; }
+  .setup-item input[type="checkbox"] {
+    appearance: none; -webkit-appearance: none;
+    flex: 0 0 auto; width: 22px; height: 22px; margin-top: 1px;
+    border: 1.5px solid var(--hair); border-radius: 6px;
+    background: var(--sheet); cursor: pointer; position: relative;
+  }
+  .setup-item input[type="checkbox"]:checked { background: var(--blue); border-color: var(--blue); }
+  .setup-item input[type="checkbox"]:checked::after {
+    content: ""; position: absolute; left: 7px; top: 3px;
+    width: 5px; height: 10px; border: solid #fff;
+    border-width: 0 2px 2px 0; transform: rotate(43deg);
+  }
+  .setup-item input:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+
+  .foot {
+    margin-top: 30px; font-size: 12.5px; color: var(--faint);
+    line-height: 1.7; text-align: center;
+  }
+  .sync {
+    font-family: var(--mono); font-size: 11px; color: var(--faint);
+    text-align: center; margin-top: 14px;
+  }
+  .sync b { color: var(--gold); font-weight: 700; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  /* ── Tab 2: which card to pull out ────────────────────────── */
+.eyebrow { font-family: var(--mono); font-size: 10.5px; font-weight: 600; letter-spacing: .16em;
+             text-transform: uppercase; color: var(--faint); }
+  h1 { font-family: var(--serif); font-size: clamp(38px, 9vw, 56px); font-weight: 400;
+       line-height: .98; letter-spacing: -.5px; margin: 10px 0 14px; text-wrap: balance; }
+  h1 em { font-style: normal; color: var(--blue);
+          background: linear-gradient(transparent 74%, var(--yellow) 74%, var(--yellow) 96%, transparent 96%); }
+  .lede { font-size: 16.5px; color: var(--muted); max-width: 60ch; line-height: 1.65; }
+  .lede b { color: var(--ink); font-weight: 600; }
+
+  h2 { font-family: var(--mono); font-size: 11px; font-weight: 700; letter-spacing: .16em;
+       text-transform: uppercase; color: var(--faint); margin-bottom: 3px; }
+  .sect { margin-top: 44px; }
+  .sect > p.note { font-size: 13.5px; color: var(--muted); margin-bottom: 16px; max-width: 68ch; line-height: 1.65; }
+
+  /* ── Category cards ── */
+  .cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(270px, 1fr)); gap: 12px; }
+  .cat { background: var(--sheet); border: 1px solid var(--hair); border-radius: 12px;
+         padding: 15px 17px 13px; box-shadow: var(--shadow); }
+  .cat h3 { font-size: 14px; font-weight: 700; letter-spacing: -.1px; margin-bottom: 2px; }
+  .cat .cq { font-family: var(--mono); font-size: 10.5px; color: var(--faint); margin-bottom: 10px; }
+  .pick { display: flex; align-items: baseline; gap: 8px; padding: 6px 0; border-top: 1px solid var(--hair2); }
+  .pick:first-of-type { border-top: none; }
+  .pick .cname { flex: 1 1 auto; min-width: 0; font-size: 13.5px; color: var(--muted); }
+  .pick .rate { font-family: var(--mono); font-size: 11.5px; color: var(--faint); white-space: nowrap; }
+  .pick .cpd  { font-family: var(--mono); font-size: 12.5px; font-weight: 700; color: var(--muted);
+                white-space: nowrap; min-width: 46px; text-align: right; }
+  .pick.win .cname { color: var(--ink); font-weight: 600; font-size: 14px; }
+  .pick.win .cpd { color: var(--blue); }
+  .cat .cap { font-size: 11.5px; color: var(--faint); margin-top: 8px; line-height: 1.5; }
+
+  /* ── Valuations ── */
+  .vals { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 11px; }
+  .val { background: var(--sheet); border: 1px solid var(--hair); border-radius: 10px; padding: 11px 13px; }
+  .val label { display: block; font-size: 12.5px; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+  .val .row { display: flex; align-items: center; gap: 6px; }
+  .val input { width: 62px; background: var(--paper); border: 1px solid var(--hair); border-radius: 6px;
+               padding: 5px 8px; color: var(--ink); font-family: var(--mono); font-size: 13px;
+               font-weight: 700; outline: none; }
+  .val input:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+  .val .unit { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+
+  /* ── Insight callout ── */
+  .call { background: var(--blueBg); border: 1px solid var(--blueLn); border-radius: 12px; padding: 18px 20px; }
+  .call h3 { font-size: 15.5px; font-weight: 700; margin-bottom: 7px; }
+  .call p { font-size: 14px; color: var(--muted); line-height: 1.7; max-width: 68ch; }
+  .call p + p { margin-top: 9px; }
+  .call b { color: var(--ink); font-weight: 600; }
+
+  /* ── Card sheets ── */
+  .card { background: var(--sheet); border: 1px solid var(--hair); border-radius: 12px;
+          box-shadow: var(--shadow); padding: 19px 21px; margin-bottom: 12px; }
+  .card.fee { border-top: 3px solid var(--yellow); }
+  .chead { display: flex; justify-content: space-between; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+  .chead h3 { font-size: 18px; font-weight: 700; letter-spacing: -.2px; }
+  .chead .issuer { font-family: var(--mono); font-size: 10.5px; color: var(--faint); margin-top: 4px; }
+  .chead .fee { font-family: var(--mono); font-size: 17px; font-weight: 700; white-space: nowrap; }
+  .chead .fee.free { color: var(--blue); }
+  .purpose { font-size: 14px; color: var(--muted); line-height: 1.65; margin-top: 11px; max-width: 66ch; }
+
+  .earn { margin-top: 14px; border-top: 1px solid var(--hair2); }
+  .erow { display: flex; align-items: baseline; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--hair2); }
+  .erow:last-child { border-bottom: none; }
+  .erow .mult { font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--ink);
+                min-width: 46px; flex: 0 0 auto; }
+  .erow .what { flex: 1 1 auto; min-width: 0; font-size: 13.5px; color: var(--muted); }
+  .erow .what i { font-style: normal; color: var(--faint); font-size: 12.5px; }
+  .erow .cpd { font-family: var(--mono); font-size: 12px; color: var(--faint); white-space: nowrap; }
+
+  .bens { margin-top: 14px; border-top: 1px solid var(--hair2); padding-top: 12px; }
+  .bens p { font-size: 13px; color: var(--muted); line-height: 1.7; margin-bottom: 4px; }
+  .bens p::before { content: "· "; color: var(--faint); }
+
+  .tot { display: flex; gap: 22px; flex-wrap: wrap; margin-top: 18px; }
+  .tot div { }
+  .tot .n { font-family: var(--mono); font-size: 22px; font-weight: 700; letter-spacing: -.5px; }
+  .tot .l { font-family: var(--mono); font-size: 10.5px; letter-spacing: .12em; text-transform: uppercase;
+            color: var(--faint); margin-top: 4px; }
+
+  .foot { margin-top: 40px; font-size: 12.5px; color: var(--faint); line-height: 1.75; max-width: 70ch; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="shell">
+
+  <nav class="tabs" role="tablist" aria-label="Sections">
+    <button role="tab" id="tab-btn-list"  aria-controls="tab-list"  aria-selected="true">
+      This month<span class="badge" id="tab-badge" hidden></span>
+    </button>
+    <button role="tab" id="tab-btn-cards" aria-controls="tab-cards" aria-selected="false">
+      Which card
+    </button>
+  </nav>
+
+  <section id="tab-list" role="tabpanel" aria-labelledby="tab-btn-list">
+    <div class="list-wrap">
+<div class="mast">
+    <div>
+      <p class="eyebrow">Perk checklist</p>
+      <h1 class="month"><span id="m-name">September</span> <span class="yr" id="m-year">2026</span></h1>
+    </div>
+    <div class="r">
+      <div class="left-amt tnum" id="left-amt">$110</div>
+      <div class="left-lab" id="left-lab">still to claim</div>
+    </div>
+  </div>
+
+  <div class="prog-track"><div class="prog-fill" id="prog"></div></div>
+  <div class="prog-meta">
+    <span id="prog-count">0 of 8 done</span>
+    <span id="prog-reset">resets in 18 days</span>
+  </div>
+
+  <div class="grp">
+    <h2>Every month</h2>
+    <p class="grp-note" id="m-note">Resets on the 1st. Unused credits do not roll over.</p>
+    <div class="sheet" id="monthly"></div>
+  </div>
+
+  <div class="grp" id="soon-grp" hidden>
+    <h2>Closing soon</h2>
+    <p class="grp-note">Not monthly, but the window shuts within six weeks.</p>
+    <div class="sheet" id="soon"></div>
+  </div>
+
+  <div class="grp">
+    <details id="later-d">
+      <summary>Open, but not urgent <span class="cnt" id="later-cnt"></span></summary>
+      <div id="later"></div>
+    </details>
+  </div>
+
+  <div class="grp">
+    <details id="setup-d">
+      <summary>One-time setup <span class="cnt" id="setup-cnt"></span></summary>
+      <div id="setup"></div>
+    </details>
+  </div>
+
+  <p class="sync" id="sync"></p>
+  <p class="foot">Ticks are saved as you go and reset on their own when the period turns over.</p>
+    </div>
+  </section>
+
+  <section id="tab-cards" role="tabpanel" aria-labelledby="tab-btn-cards" hidden>
+<p class="eyebrow">Ngozi · ten cards</p>
+  <h1>Which card do I<br><em>pull out?</em></h1>
+  <p class="lede">
+    A multiplier on its own tells you nothing. <b>3× SkyMiles is worth less than 2× Membership Rewards.</b>
+    So every rate below is converted to cents back per dollar spent, using the point values you set — change
+    those and the rankings change with them.
+  </p>
+
+  <div class="tot">
+    <div><p class="n tnum" id="t-cards">10</p><p class="l">cards</p></div>
+    <div><p class="n tnum" id="t-fees">$1,385</p><p class="l">in annual fees</p></div>
+    <div><p class="n tnum" id="t-paid">5</p><p class="l">carry a fee</p></div>
+  </div>
+
+  <div class="sect">
+    <h2>Where to put each purchase</h2>
+    <p class="note">Best card first, with the next two for comparison. Rates are what the card pays; the figure
+      on the right is what that is worth in cents per dollar at your valuations.</p>
+    <div class="cats" id="cats"></div>
+  </div>
+
+  <div class="sect">
+    <h2>What you think a point is worth</h2>
+    <p class="note">These are estimates, not facts, and they decide every ranking above. Mine are middle-of-the-road
+      redemption values — airline miles are marked down because award availability is the real constraint. Put in
+      your own and the page recalculates.</p>
+    <div class="vals" id="vals"></div>
+  </div>
+
+  <div class="sect">
+    <h2>One conflict worth knowing about</h2>
+    <div class="call">
+      <h3>Groceries to Bilt, dining to the Sapphire. Your category choice already settled it.</h3>
+      <p>
+        Bilt's 3× is <b>one category, not two</b> — groceries or dining, chosen once and locked for the calendar
+        year. Yours is set to groceries, so dining on the Bilt earns the base 1×. That single setting decides the
+        whole split.
+      </p>
+      <p>
+        It works in your favour. Groceries are the steadier monthly number, so they are the better engine for the
+        <b>$899 of non-housing spend</b> that keeps your HOA earning 1.25× — and they earn 3× on the way. Dining
+        then goes to the Sapphire Preferred at 3×, worth the same per dollar, with nothing lost. Gas, streaming,
+        vacation rentals and Chase Travel stay on the Sapphire too; Bilt does not cover them.
+      </p>
+      <p>
+        Had the category been left on its default of dining, these two goals would have been fighting over the
+        same transactions all year.
+      </p>
+    </div>
+  </div>
+
+  <div class="sect">
+    <h2>The ten cards</h2>
+    <p class="note">Only categories paying more than 1× are listed. Everything not shown earns the base rate.</p>
+    <div id="cards"></div>
+  </div>
+
+  <p class="foot" id="foot"></p>
+  </section>
+
+</div>
+
+<script>
+// Tabs. The choice is remembered per browser so the page reopens where you left it.
+(function () {
+  var TABS = [["tab-btn-list", "tab-list"], ["tab-btn-cards", "tab-cards"]];
+  function show(panelId) {
+    TABS.forEach(function (t) {
+      var on = t[1] === panelId;
+      document.getElementById(t[0]).setAttribute("aria-selected", on ? "true" : "false");
+      document.getElementById(t[1]).hidden = !on;
+    });
+    try { localStorage.setItem("perk_tab", panelId); } catch (e) { /* ignore */ }
+  }
+  TABS.forEach(function (t) {
+    document.getElementById(t[0]).addEventListener("click", function () { show(t[1]); });
+  });
+  var saved;
+  try { saved = localStorage.getItem("perk_tab"); } catch (e) { /* ignore */ }
+  if (saved && TABS.some(function (t) { return t[1] === saved; })) show(saved);
+})();
+</script>
+
+<script>
+
+(function () {
+  "use strict";
+
+  var CARDS = {
+    plat:   "Amex Platinum",
+    united: "United Explorer",
+    delta:  "Delta Gold Business",
+    csp:    "Sapphire Preferred",
+    bilt:   "Bilt Obsidian",
+    bofa:   "BofA Cash Rewards"
+  };
+
+  // cad: m=monthly q=quarterly h=semiannual y=calendar year
+  //      a=card anniversary o=one-time 4=every four years
+  var ITEMS = [
+    { id:"uber",   card:"plat",   name:"Uber Cash",                 amt:15,  cad:"m", dec:35 },
+    { id:"ent",    card:"plat",   name:"Digital entertainment",     amt:25,  cad:"m" },
+    { id:"wmt",    card:"plat",   name:"Walmart+",                  amt:20,  cad:"m" },
+    { id:"dride",  card:"delta",  name:"Rideshare",                 amt:10,  cad:"m" },
+    { id:"insta",  card:"united", name:"Instacart",                 amt:10,  cad:"m" },
+    { id:"uride",  card:"united", name:"Rideshare",                 amt:5,   cad:"m" },
+    { id:"dashcr", card:"csp",    name:"DoorDash credit",           amt:10,  cad:"m", hint:"Non-restaurant orders only — grocery, convenience, retail. Needs DashPass active, and you have to toggle the offer on before you submit the order." },
+    { id:"bofa",   card:"bofa",   name:"Pick your 3% category",     amt:0,   cad:"m", free:"choose one" },
+    { id:"bilt899",card:"bilt",   name:"Spend $899 on the Bilt card", amt:0, cad:"m", free:"unlocks 1.25×", hint:"Non-housing spend is what sets your Bilt earn rate. Clear $899 and your HOA payment earns 1.25× instead of dropping toward zero." },
+
+    { id:"resy",   card:"plat",   name:"Resy dining",               amt:100, cad:"q" },
+    { id:"lulu",   card:"plat",   name:"lululemon",                 amt:75,  cad:"q" },
+
+    { id:"hotel",  card:"plat",   name:"Hotel credit",              amt:300, cad:"h", hint:"Fine Hotels + Resorts, or Hotel Collection with 2 nights. Book through Amex Travel." },
+    { id:"bilth",  card:"bilt",   name:"Bilt Travel hotel",         amt:50,  cad:"h", hint:"2-night minimum through the Bilt portal." },
+
+    { id:"air",    card:"plat",   name:"Airline incidentals",       amt:200, cad:"y", hint:"Bag and seat fees on your selected airline. Not airfare." },
+    { id:"clear",  card:"plat",   name:"CLEAR+",                    amt:209, cad:"y" },
+    { id:"oura",   card:"plat",   name:"Oura Ring",                 amt:200, cad:"y", hint:"Hardware only, not the membership." },
+    { id:"uone",   card:"plat",   name:"Uber One",                  amt:120, cad:"y" },
+    { id:"dstays", card:"delta",  name:"Delta Stays",               amt:150, cad:"y" },
+    { id:"jsx",    card:"united", name:"JSX flights",               amt:100, cad:"y" },
+    { id:"uclub",  card:"united", name:"United Club passes",        amt:0,   cad:"y", free:"2 passes" },
+
+    { id:"csph",   card:"csp",    name:"Chase Travel hotel",        amt:100, cad:"a", anniv:12, hint:"Cash, not points. Your card year turns over in December." },
+    { id:"unith",  card:"united", name:"United Hotels",             amt:100, cad:"a", anniv:3,  hint:"Two separate stays of $50, not one. Your card year turns over in March." },
+
+    { id:"dflt",   card:"delta",  name:"Delta flight credit",       amt:200, cad:"y", gate:"after $10k spend" },
+    { id:"tbank",  card:"united", name:"United TravelBank",         amt:100, cad:"y", gate:"after $10k spend" },
+
+    { id:"atv",    card:"csp",    name:"Apple TV, 12 months free",  amt:99,  cad:"o", by:"2026-12-31" },
+    { id:"dash",   card:"csp",    name:"DoorDash DashPass",         amt:0,   cad:"o", by:"2027-12-31", free:"free through 2027" },
+
+    { id:"ge",     card:"plat",   name:"Global Entry or PreCheck",  amt:120, cad:"4", hint:"One card can reimburse one application every four years. Platinum, Sapphire Preferred and United Explorer all offer it." }
+  ];
+
+  var SETUP = [
+    { id:"s_ent",  t:"Enrol in the digital entertainment credit", s:"Amex account, Benefits, Digital Entertainment." },
+    { id:"s_wmt",  t:"Enrol in Walmart+",                         s:"Amex account, Benefits, Walmart+." },
+    { id:"s_resy", t:"Enrol in the Resy credit",                  s:"Amex account, Benefits, Resy. Your biggest quarterly credit." },
+    { id:"s_lulu", t:"Enrol in the lululemon credit",             s:"Amex account, Benefits, lululemon." },
+    { id:"s_uber", t:"Add the Platinum to the Uber app",          s:"Uber Cash will not load until the card is attached." },
+    { id:"s_air",  t:"Pick your airline for incidentals",         s:"Amex account, Airline Fee Credit. One airline per year." },
+    { id:"s_dash", t:"Activate DoorDash DashPass",                s:"Free through Dec 31 2027, but only once you switch it on." },
+    { id:"s_eqx",  t:"Only if you join Equinox: put the Platinum on file", s:"Worth $25 a month, but only once Equinox bills this card. Left off the monthly list until then, so it is not nagging you about a credit that cannot pay." }
+  ];
+
+  var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+  var DAY = 86400000;
+  var now = new Date();
+  var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  var Y = today.getFullYear(), M = today.getMonth();
+
+  // ── Reset clocks. Ticks are filed under the period they belong to, so a
+  //    new month simply finds no record and the list is open again.
+  function periodOf(it) {
+    switch (it.cad) {
+      case "m": return { key: Y + "-" + String(M + 1).padStart(2, "0"), end: new Date(Y, M + 1, 1) };
+      case "q": var q = Math.floor(M / 3);
+                return { key: Y + "-Q" + (q + 1), end: new Date(Y, q * 3 + 3, 1) };
+      case "h": var h = M < 6 ? 0 : 1;
+                return { key: Y + "-H" + (h + 1), end: new Date(Y, h * 6 + 6, 1) };
+      case "y": return { key: String(Y), end: new Date(Y + 1, 0, 1) };
+      // Card-year credits turn over on the account anniversary. Only the month
+      // is known, so the 1st stands in — the countdown runs a little early,
+      // which is the safe direction to be wrong in.
+      case "a": var am = it.anniv - 1;
+                var st = new Date(Y, am, 1);
+                if (st > today) st = new Date(Y - 1, am, 1);
+                return { key: "a" + it.id + st.getFullYear(),
+                         end: new Date(st.getFullYear() + 1, am, 1) };
+      case "o": var p = it.by.split("-");
+                return { key: "once", end: new Date(+p[0], +p[1] - 1, +p[2] + 1) };
+      default:  return { key: "cycle", end: null };
+    }
+  }
+  function daysTo(end) { return end ? Math.max(0, Math.ceil((end - today) / DAY)) : null; }
+  function amountOf(it, p) {
+    if (it.dec && p.end && p.end.getMonth() === 0) return it.dec; // December pays more
+    return it.amt;
+  }
+  var money = function (n) { return "$" + n.toLocaleString(); };
+
+  // ── State: { periodKey: Set(itemIds) }. Mirrored to localStorage so the
+  //    page renders filled in immediately, then reconciles with the store.
+  var state = {};
+  var inflight = {};
+  var db = null;
+  var backend = "local";   // "api" on Vercel, "artifact" on claude.ai, else local only
+
+  function loadLocal() {
+    try {
+      var raw = JSON.parse(localStorage.getItem("perk_checks") || "{}");
+      Object.keys(raw).forEach(function (k) { state[k] = new Set(raw[k]); });
+    } catch (e) { /* blocked storage: run from memory */ }
+  }
+  function saveLocal() {
+    try {
+      var out = {};
+      Object.keys(state).forEach(function (k) { out[k] = Array.from(state[k]); });
+      localStorage.setItem("perk_checks", JSON.stringify(out));
+    } catch (e) { /* ignore */ }
+  }
+  function isDone(it) {
+    var p = periodOf(it);
+    return !!(state[p.key] && state[p.key].has(it.id));
+  }
+  function setDone(it, on) {
+    var p = periodOf(it);
+    if (!state[p.key]) state[p.key] = new Set();
+    if (on) state[p.key].add(it.id); else state[p.key].delete(it.id);
+    saveLocal();
+    push(p.key, it.id, on);
+  }
+  function push(key, itemId, ticked) {
+    if (backend === "api") {
+      inflight[key] = (inflight[key] || 0) + 1;
+      fetch("/api/ticks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ periodKey: key, itemId: itemId, ticked: ticked })
+      }).catch(function () { setSync("Saved here \u2014 the server did not answer.", true); })
+        .then(function () { inflight[key] = Math.max(0, (inflight[key] || 1) - 1); });
+      return;
+    }
+    if (backend === "artifact" && db) {
+      inflight[key] = (inflight[key] || 0) + 1;
+      db.doc("checks/" + key).set({
+        done: Array.from(state[key] || []),
+        updatedAt: new Date().toISOString()
+      }).catch(function () { /* the local copy still stands */ })
+        .then(function () { inflight[key] = Math.max(0, (inflight[key] || 1) - 1); });
+    }
+  }
+
+  // ── Rendering ──────────────────────────────────────────────
+  function rowHtml(it) {
+    var p = periodOf(it), d = daysTo(p.end), done = isDone(it), amt = amountOf(it, p);
+    var bits = [CARDS[it.card]];
+    if (it.cad !== "m") {
+      if (it.gate) bits.push(it.gate);
+      else if (d !== null) bits.push(d === 0 ? "ends today" : d + " days left");
+      else if (it.cad === "a") bits.push("card anniversary");
+      else bits.push("every 4 years");
+    }
+    var chip = "";
+    if (it.cad !== "m" && d !== null && d <= 14) chip = '<span class="chip soon">' + d + 'd</span>';
+    if (it.gate) chip = '<span class="chip gate">locked</span>';
+
+    return '<label class="row' + (done ? " done" : "") + '" data-id="' + it.id + '">'
+      + '<input type="checkbox" id="chk-' + it.id + '"' + (done ? " checked" : "") + '>'
+      + '<span class="body">'
+      +   '<span class="name">' + it.name + chip + '</span>'
+      +   '<span class="sub">' + bits.join("  ·  ") + '</span>'
+      +   (it.hint ? '<span class="hint">' + it.hint + '</span>' : "")
+      + '</span>'
+      + '<span class="amt tnum">' + (amt > 0 ? money(amt) : '<span class="none">' + (it.free || "—") + '</span>') + '</span>'
+      + '</label>';
+  }
+
+  function render() {
+    document.getElementById("m-name").textContent = MONTHS[M];
+    document.getElementById("m-year").textContent = Y;
+
+    var monthly = ITEMS.filter(function (i) { return i.cad === "m"; });
+    var rest = ITEMS.filter(function (i) { return i.cad !== "m"; }).map(function (i) {
+      var p = periodOf(i);
+      return { it: i, d: daysTo(p.end) };
+    });
+    rest.sort(function (a, b) {
+      return (a.d === null ? 9e9 : a.d) - (b.d === null ? 9e9 : b.d);
+    });
+
+    var soon = rest.filter(function (r) { return !r.it.gate && r.d !== null && r.d <= 45; });
+    var later = rest.filter(function (r) { return soon.indexOf(r) === -1; });
+
+    document.getElementById("monthly").innerHTML = monthly.map(rowHtml).join("");
+    document.getElementById("soon").innerHTML = soon.map(function (r) { return rowHtml(r.it); }).join("");
+    document.getElementById("soon-grp").hidden = soon.length === 0;
+    document.getElementById("later").innerHTML = later.map(function (r) { return rowHtml(r.it); }).join("");
+
+    var openLater = later.filter(function (r) { return !isDone(r.it); }).length;
+    document.getElementById("later-cnt").textContent = openLater + " open";
+
+    // Header maths — monthly only, because that is what the month is about.
+    var left = 0, doneN = 0;
+    monthly.forEach(function (it) {
+      var p = periodOf(it);
+      if (isDone(it)) doneN++; else left += amountOf(it, p);
+    });
+    var amtEl = document.getElementById("left-amt");
+    amtEl.textContent = left > 0 ? money(left) : "All clear";
+    amtEl.classList.toggle("zero", left === 0);
+    document.getElementById("left-lab").textContent =
+      left > 0 ? "still to claim" : "nothing left this month";
+
+    var pct = monthly.length ? (doneN / monthly.length) * 100 : 0;
+    var fill = document.getElementById("prog");
+    fill.style.width = pct + "%";
+    fill.classList.toggle("full", doneN === monthly.length);
+    document.getElementById("prog-count").textContent = doneN + " of " + monthly.length + " done";
+
+    var badge = document.getElementById("tab-badge");
+    if (badge) {
+      var openN = monthly.length - doneN;
+      badge.textContent = openN;
+      badge.hidden = openN === 0;
+    }
+
+    var dLeft = daysTo(new Date(Y, M + 1, 1));
+    var resetEl = document.getElementById("prog-reset");
+    resetEl.textContent = dLeft === 1 ? "resets tomorrow" : "resets in " + dLeft + " days";
+    resetEl.className = (dLeft <= 5 && doneN < monthly.length) ? "urgent" : "";
+
+    // Setup list
+    document.getElementById("setup").innerHTML = SETUP.map(function (s) {
+      var done = !!(state["setup"] && state["setup"].has(s.id));
+      return '<label class="setup-item' + (done ? " done" : "") + '" data-setup="' + s.id + '">'
+        + '<input type="checkbox" id="chk-' + s.id + '"' + (done ? " checked" : "") + '>'
+        + '<span><span class="st-name">' + s.t + '</span><span class="st-sub">' + s.s + '</span></span>'
+        + '</label>';
+    }).join("");
+    var openSetup = SETUP.filter(function (s) { return !(state["setup"] && state["setup"].has(s.id)); }).length;
+    document.getElementById("setup-cnt").textContent = openSetup ? openSetup + " left" : "all done";
+  }
+
+  // Delegated so re-rendering never drops handlers.
+  document.addEventListener("change", function (e) {
+    var el = e.target;
+    if (el.type !== "checkbox") return;
+    var row = el.closest("[data-id]");
+    if (row) {
+      var it = ITEMS.filter(function (i) { return i.id === row.getAttribute("data-id"); })[0];
+      if (it) { setDone(it, el.checked); render(); }
+      return;
+    }
+    var srow = el.closest("[data-setup]");
+    if (srow) {
+      var sid = srow.getAttribute("data-setup");
+      if (!state["setup"]) state["setup"] = new Set();
+      if (el.checked) state["setup"].add(sid); else state["setup"].delete(sid);
+      saveLocal(); push("setup", sid, el.checked); render();
+    }
+  });
+
+  loadLocal();
+  render();
+
+  // ── Sync. The page works with none of this; a backend only makes the ticks
+  //    reachable from another device, and readable when the reminder runs.
+  //    Three homes, tried in order: this app's own API, the Claude artifact
+  //    store, or nothing at all.
+  var syncEl = document.getElementById("sync");
+  function setSync(msg, warn) {
+    syncEl.innerHTML = warn ? "<b>" + msg + "</b>" : msg;
+  }
+
+  function allKeys() {
+    var keys = {};
+    ITEMS.forEach(function (i) { keys[periodOf(i).key] = 1; });
+    keys["setup"] = 1;
+    return Object.keys(keys);
+  }
+
+  function adoptServer(byKey) {
+    Object.keys(byKey).forEach(function (k) {
+      if (inflight[k]) return;                 // our own write is still settling
+      state[k] = new Set(byKey[k] || []);
+    });
+    saveLocal();
+    render();
+  }
+
+  function tryApi() {
+    var keys = allKeys();
+    return fetch("/api/ticks?periods=" + encodeURIComponent(keys.join(",")))
+      .then(function (r) {
+        if (!r.ok) throw new Error("api " + r.status);
+        return r.json();
+      })
+      .then(function (data) {
+        backend = "api";
+        adoptServer(data);
+        setSync("Synced across your devices.");
+        return true;
+      });
+  }
+
+  function tryArtifact() {
+    if (!(window.claude && window.claude.use)) return Promise.resolve(false);
+    return window.claude.use("db").then(function (ns) {
+      if (!ns) return false;
+      db = ns;
+      backend = "artifact";
+      allKeys().forEach(function (k) {
+        db.doc("checks/" + k).onSnapshot(function (snap) {
+          if (inflight[k]) return;
+          var d = snap.exists ? snap.data() : null;
+          state[k] = new Set((d && d.done) || []);
+          saveLocal();
+          render();
+        }, function () { /* listener died; local state carries on */ });
+      });
+      setSync("Synced across your devices.");
+      return true;
+    });
+  }
+
+  tryApi()
+    .catch(function () { return tryArtifact(); })
+    .then(function (ok) {
+      if (!ok) setSync("Saved on this device only.");
+    })
+    .catch(function () { setSync("Saved on this device only."); });
+
+})();
+
+</script>
+
+<script>
+
+(function () {
+  "use strict";
+
+  // Cents per point. Defaults are mid-range redemption values; airline miles are
+  // marked down because award availability, not the balance, is the binding limit.
+  var DEFAULT_VALUES = {
+    chase:   { label: "Chase Ultimate Rewards", v: 1.8 },
+    amex:    { label: "Amex Membership Rewards", v: 1.8 },
+    bilt:    { label: "Bilt Points",             v: 1.8 },
+    jetblue: { label: "JetBlue TrueBlue",        v: 1.3 },
+    united:  { label: "United MileagePlus",      v: 1.2 },
+    delta:   { label: "Delta SkyMiles",          v: 1.1 },
+    cash:    { label: "Cash back",               v: 1.0 }
+  };
+
+  var CARDS = [
+    { id:"plat",    name:"Amex Platinum", issuer:"American Express", fee:895, cur:"amex",
+      purpose:"Lounge access and big-ticket travel booked through Amex. Outside those two things it pays 1×, so it is a benefits card that happens to earn points, not an everyday card.",
+      earn:[ [5,"Flights booked direct with the airline or through Amex Travel","up to $500k a year"],
+             [5,"Prepaid hotels through Amex Travel","includes Fine Hotels + Resorts"] ],
+      bens:["Centurion Lounge, Priority Pass and Delta Sky Club access when flying Delta.",
+            "Fine Hotels + Resorts: room upgrades, daily breakfast, late checkout.",
+            "$600 hotel credit, $400 Resy, $300 lululemon, $300 digital entertainment a year — see the checklist."] },
+
+    { id:"united",  name:"United Explorer", issuer:"Chase", fee:150, cur:"united",
+      purpose:"Earns its fee back on the checked bag alone if you fly United twice a year with a companion. The card's own rates are modest.",
+      earn:[ [3,"United purchases","stacks with your 6× MileagePlus base for 9× on fares"],
+             [2,"Dining, including delivery",""],
+             [2,"Hotel stays booked direct with the hotel",""] ],
+      bens:["First checked bag free for you and a companion — about $70 a roundtrip for two.",
+            "Two United Club passes a year, priority boarding, 25% back on inflight purchases.",
+            "$100 JSX, $120 Instacart, $60 rideshare and $100 United Hotels credits a year.",
+            "No foreign transaction fees."] },
+
+    { id:"delta",   name:"Delta SkyMiles Gold Business", issuer:"American Express", fee:150, cur:"delta", biz:true,
+      purpose:"An LLC card. Same logic as the United Explorer — the checked bag and the credits carry it, not the earn rate, and SkyMiles are the weakest currency in this wallet.",
+      earn:[ [2,"Delta purchases booked direct",""],
+             [2,"Restaurants worldwide",""],
+             [2,"US shipping providers","up to $50k a year"],
+             [2,"US advertising in select media","up to $50k a year"] ],
+      bens:["First checked bag free on Delta for you and up to eight companions.",
+            "Main Cabin 1 priority boarding.",
+            "$150 Delta Stays and $120 rideshare credits a year, plus $200 in flight credit past $10k of spend."] },
+
+    { id:"csp",     name:"Chase Sapphire Preferred", issuer:"Chase", fee:95, cur:"chase",
+      purpose:"The widest set of bonus categories you own, on the strongest currency, for $95. This is the default card for anything the Bilt does not cover.",
+      earn:[ [5,"Chase Travel","flights, hotels, cars, cruises, activities"],
+             [3,"Dining",""],
+             [3,"Gas and EV charging",""],
+             [3,"Vacation rentals booked direct","Airbnb, Vrbo and similar"],
+             [3,"Streaming and online groceries","excludes Walmart, Target, wholesale clubs"],
+             [2,"All other travel",""] ],
+      bens:["$100 Chase Travel hotel credit each card year — cash bookings only, not points.",
+            "$10 a month in DoorDash credit on non-restaurant orders, and DashPass through 2027.",
+            "Apple TV free for a year if activated by Dec 31 2026.",
+            "Primary rental car coverage, trip delay and cancellation cover, no foreign transaction fees."] },
+
+    { id:"bilt",    name:"Bilt Obsidian", issuer:"Column N.A.", fee:95, cur:"bilt",
+      purpose:"The only card in the wallet that earns anything at all on housing. Everything else it does is in service of keeping that rate up.",
+      earn:[ [4,"Hotels through Bilt Travel",""],
+             [3,"Groceries, in store and online","your chosen 3× category — up to $25k a year"],
+             [3,"Flights through Bilt Travel",""],
+             [2,"All other travel",""],
+             [1.25,"Rent, mortgage and HOA through the Bilt app","rate falls toward zero without enough non-housing spend"] ],
+      bens:["Housing payments earn points with no transaction fee — the reason the card exists.",
+            "The 3× category is one choice between groceries and dining, locked for the calendar year. Yours is groceries, so dining on this card earns 1×.",
+            "$50 Bilt Travel hotel credit twice a year, 2-night minimum.",
+            "Your HOA rate is set by non-housing spend. $899 a month is your threshold for the full 1.25×."] },
+
+    { id:"jetblue", name:"JetBlue Card", issuer:"Barclays", fee:0, cur:"jetblue",
+      purpose:"Free to hold. Worth using only on JetBlue itself — the base tier has no checked bag benefit.",
+      earn:[ [3,"JetBlue purchases",""], [2,"Dining and groceries",""] ],
+      bens:["50% off inflight food and drink, 10% of points back on award redemptions.",
+            "No free checked bag — that is the Plus card, not this one."] },
+
+    { id:"prime",   name:"Amazon Prime Visa", issuer:"Chase", fee:0, cur:"cash",
+      purpose:"Free, and unbeatable on Amazon. Nowhere else.",
+      earn:[ [5,"Amazon and Whole Foods","requires an active Prime membership"],
+             [5,"Chase Travel",""],
+             [2,"Restaurants, gas and local transit",""] ],
+      bens:["Depends on Prime staying active — if the membership lapses, the 5% goes with it."] },
+
+    { id:"freedom", name:"Chase Freedom Unlimited", issuer:"Chase", fee:0, cur:"chase",
+      purpose:"Quietly the best catch-all you own. 1.5× on everything, on Chase points, beats every flat cash-back rate in the wallet.",
+      earn:[ [5,"Chase Travel",""], [3,"Dining",""], [3,"Drugstores",""],
+             [1.5,"Everything else","this is the one that matters"] ],
+      bens:["No rotating categories — that is the Freedom Flex, a different card.",
+            "Points pool with the Sapphire Preferred, which is what makes the 1.5× worth more than 1.5 cents."] },
+
+    { id:"apple",   name:"Apple Card", issuer:"Goldman Sachs", fee:0, cur:"cash",
+      purpose:"Daily Cash, paid immediately, nothing to track. Good at Apple, mediocre everywhere else.",
+      earn:[ [3,"Apple and select partner merchants",""], [2,"Anything paid with Apple Pay",""] ],
+      bens:["No expiring credits, no annual fee, no categories to manage."] },
+
+    { id:"bofa",    name:"BofA Cash Rewards", issuer:"Bank of America", fee:0, cur:"cash",
+      purpose:"Only pays off if you change the 3% category to match what you are about to spend on, and stay under the quarterly cap.",
+      earn:[ [3,"One category you choose each month","gas, online shopping, dining, travel, drugstores or home improvement"],
+             [2,"Groceries and wholesale clubs",""] ],
+      bens:["The 3% and 2% rates share a $2,500 cap per quarter. Past that everything drops to 1%.",
+            "The category has to be actively re-chosen or it stays on last month's pick."] }
+  ];
+
+  // category, cardId, rate, optional footnote
+  var EARN = [
+    ["Dining out",            "Where do I eat tonight",      [["csp",3,""],["freedom",3,""],["jetblue",2,""],["united",2,""],["delta",2,""],["bilt",1,"Your 3× is set to groceries, so dining here earns the base rate."]]],
+    ["Groceries in store",    "Weekly shop",                 [["bilt",3,"Your chosen 3× category, $25k a year. At Whole Foods the Prime Visa pays 5% — use that instead."],["prime",5,"Whole Foods only"],["jetblue",2,""],["bofa",2,"$2,500 a quarter cap"]]],
+    ["Groceries online",      "Instacart, delivery",         [["csp",3,"not Walmart, Target or wholesale clubs"],["bilt",3,"counts toward your $899"]]],
+    ["Amazon.com",            "The obvious one",             [["prime",5,"needs Prime active. Nothing else in the wallet beats 1× here."]]],
+    ["Flights, booked direct","Straight from the airline",   [["plat",5,"$500k a year cap"],["united",3,"on United only"],["jetblue",3,"on JetBlue only"],["delta",2,"on Delta only"]]],
+    ["Flights, via a portal", "Chase, Amex or Bilt Travel",  [["plat",5,""],["csp",5,""],["prime",5,"Chase Travel"],["bilt",3,""]]],
+    ["Hotels, via a portal",  "Prepaid through the portal",  [["plat",5,"includes Fine Hotels + Resorts"],["csp",5,""],["bilt",4,""]]],
+    ["Hotels, booked direct", "Straight from the hotel",     [["bilt",2,"other travel"],["csp",2,"other travel"],["united",2,""]]],
+    ["Vacation rentals",      "Airbnb, Vrbo",                [["csp",3,"booked direct, not via the portal"],["bilt",2,"other travel"]]],
+    ["Gas & EV charging",     "At the pump or the plug",     [["csp",3,""],["bofa",3,"if gas is your chosen category"],["prime",2,""]]],
+    ["Streaming",             "Netflix, Spotify and friends",[["csp",3,"top services only"]]],
+    ["Rent, mortgage, HOA",   "The big one",                 [["bilt",1.25,"through the Bilt app, and only with enough non-housing spend"]]],
+    ["Everything else",       "No category fits",            [["freedom",1.5,""],["apple",2,"paid with Apple Pay"],["bilt",1,""],["bofa",1,""]]]
+  ];
+
+  var CARD_BY = {};
+  CARDS.forEach(function (c) { CARD_BY[c.id] = c; });
+
+  var values = (function () {
+    var out = {};
+    Object.keys(DEFAULT_VALUES).forEach(function (k) { out[k] = DEFAULT_VALUES[k].v; });
+    try {
+      var saved = JSON.parse(localStorage.getItem("wallet_values") || "null");
+      if (saved) Object.keys(out).forEach(function (k) {
+        if (typeof saved[k] === "number" && saved[k] > 0) out[k] = saved[k];
+      });
+    } catch (e) { /* blocked storage: use defaults */ }
+    return out;
+  })();
+
+  function save() {
+    try { localStorage.setItem("wallet_values", JSON.stringify(values)); } catch (e) { /* ignore */ }
+  }
+
+  var fmtRate = function (r) { return (r % 1 ? r.toFixed(2).replace(/0$/, "") : r) + "×"; };
+  var cents = function (cardId, rate) { return rate * values[CARD_BY[cardId].cur]; };
+  var fmtCents = function (c) { return c.toFixed(1) + "¢"; };
+
+  function renderCats() {
+    document.getElementById("cats").innerHTML = EARN.map(function (row) {
+      var title = row[0], q = row[1];
+      var picks = row[2].map(function (p) {
+        return { card: CARD_BY[p[0]], rate: p[1], foot: p[2], c: cents(p[0], p[1]) };
+      }).sort(function (a, b) { return b.c - a.c; });
+
+      var top = picks.slice(0, 3);
+      var foot = top[0].foot;
+      return '<div class="cat">'
+        + '<h3>' + title + '</h3><p class="cq">' + q + '</p>'
+        + top.map(function (p, i) {
+            return '<div class="pick' + (i === 0 ? " win" : "") + '">'
+              + '<span class="cname">' + p.card.name + '</span>'
+              + '<span class="rate">' + fmtRate(p.rate) + '</span>'
+              + '<span class="cpd tnum">' + fmtCents(p.c) + '</span>'
+              + '</div>';
+          }).join("")
+        + (foot ? '<p class="cap">' + foot + '</p>' : "")
+        + '</div>';
+    }).join("");
+  }
+
+  function renderVals() {
+    document.getElementById("vals").innerHTML = Object.keys(DEFAULT_VALUES).map(function (k) {
+      return '<div class="val">'
+        + '<label for="v-' + k + '">' + DEFAULT_VALUES[k].label + '</label>'
+        + '<span class="row"><input type="number" id="v-' + k + '" step="0.1" min="0.1" max="10" '
+        + 'value="' + values[k] + '" data-cur="' + k + '">'
+        + '<span class="unit">cents per point</span></span>'
+        + '</div>';
+    }).join("");
+  }
+
+  function renderCards() {
+    document.getElementById("cards").innerHTML = CARDS.map(function (c) {
+      return '<div class="card' + (c.fee > 0 ? " fee" : "") + '">'
+        + '<div class="chead"><div>'
+        +   '<h3>' + c.name + (c.biz ? ' <span class="rate" style="font-family:var(--mono);font-size:10.5px;color:var(--faint)">business</span>' : "") + '</h3>'
+        +   '<p class="issuer">' + c.issuer + '</p>'
+        + '</div>'
+        + '<p class="fee' + (c.fee ? "" : " free") + '">' + (c.fee ? "$" + c.fee + "/yr" : "No fee") + '</p></div>'
+        + '<p class="purpose">' + c.purpose + '</p>'
+        + '<div class="earn">' + c.earn.map(function (e) {
+            return '<div class="erow">'
+              + '<span class="mult">' + fmtRate(e[0]) + '</span>'
+              + '<span class="what">' + e[1] + (e[2] ? ' <i>' + e[2] + '</i>' : "") + '</span>'
+              + '<span class="cpd tnum">' + fmtCents(e[0] * values[c.cur]) + '</span>'
+              + '</div>';
+          }).join("") + '</div>'
+        + '<div class="bens">' + c.bens.map(function (b) { return '<p>' + b + '</p>'; }).join("") + '</div>'
+        + '</div>';
+    }).join("");
+  }
+
+  function renderTotals() {
+    var fees = CARDS.reduce(function (a, c) { return a + c.fee; }, 0);
+    document.getElementById("t-cards").textContent = CARDS.length;
+    document.getElementById("t-fees").textContent = "$" + fees.toLocaleString();
+    document.getElementById("t-paid").textContent = CARDS.filter(function (c) { return c.fee > 0; }).length;
+    document.getElementById("foot").innerHTML =
+      "Every rate here was checked against the issuer's own published terms in September 2026 — including the "
+      + "Sapphire Preferred's 3\u00d7 on vacation homes, which is real: Chase added it on 15 June 2026 for Airbnb, "
+      + "Vrbo, Plum Guide, HomeAway, Homestay.com and Vacasa booked direct.<br><br>"
+      + "Two rates are not fixed by the issuer but by you, and will be wrong the moment you change them: the "
+      + "<b>Bilt 3\u00d7 category</b> (groceries or dining, one choice a calendar year \u2014 currently groceries) and the "
+      + "<b>BofA 3\u00d7 category</b> (re-chosen monthly). Everything else moves only when the issuer moves it, which "
+      + "they do often \u2014 Amex refreshed the Platinum in late 2025, Chase the Sapphire Preferred in June 2026, and "
+      + "Bilt relaunched in February 2026 \u2014 so re-read this once a year.<br><br>"
+      + "Point values are your own estimates and are saved in this browser.";
+  }
+
+  document.addEventListener("input", function (e) {
+    var cur = e.target.getAttribute && e.target.getAttribute("data-cur");
+    if (!cur) return;
+    var n = parseFloat(e.target.value);
+    if (isNaN(n) || n <= 0) return;
+    values[cur] = n;
+    save();
+    renderCats();
+    renderCards();
+  });
+
+  renderVals();
+  renderCats();
+  renderCards();
+  renderTotals();
+})();
+
+</script>

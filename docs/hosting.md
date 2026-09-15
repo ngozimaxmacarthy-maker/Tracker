@@ -72,45 +72,41 @@ consequence worth designing around:
 > returns.
 
 That would feel broken on a page whose whole job is to be glanceable. The fix is
-already in the code: both pages render immediately from `localStorage`, then
-reconcile with the server when it answers. Keep that pattern when you swap the
-storage layer — render local, fetch remote, re-render on arrival. Never block the
-first paint on the database.
+already in the code: the page renders immediately from `localStorage`, then
+reconciles with the server when it answers. Never block the first paint on the
+database.
 
-## Auth: the part that needs real thought
+## Auth: you already paid for the answer
 
-Everything above is bookkeeping. This is the actual decision.
+You are on **Vercel Pro at $20/month**, not Hobby — Hobby is the free tier. That
+changes the recommendation I made before I knew that.
 
-The pages hold no card numbers, no credentials, nothing that lets anyone spend
-your money. What they do hold is a fairly precise picture of your finances — ten
-cards, $1,385 in fees, where you shop, what your HOA situation is. Not a
-catastrophe if seen, but not something to leave on a guessable URL either.
+The pages hold no card numbers and nothing that lets anyone spend your money.
+What they do hold is a fairly precise picture of your finances: ten cards, $1,385
+in fees, where you shop, that you pay an HOA. Not a catastrophe if seen, but not
+something to leave on a guessable URL.
 
-Three options, worst to best for your case:
+**Use Vercel Deployment Protection.** Settings → Deployment Protection →
+Password Protection. It is included in Pro, it is a dashboard toggle, and it runs
+at Vercel's edge before any of your code executes, which is stronger than
+anything you would write yourself. I previously suggested a hand-rolled cookie
+gate on the assumption you were on the free plan; do not build that now.
 
-1. **Vercel Deployment Protection.** Password-gates the whole deployment. It is
-   the least code. It is also a Pro feature at $20/month — more than the rest of
-   the stack costs combined, for one password. Skip it.
+One consequence to plan for, because it has bitten people: **protection runs at
+the edge, so it sits in front of `/api/cron` too.** Two defences, and you want
+both:
 
-2. **A signed cookie behind a password form.** ~20 lines, no dependency. Rolling
-   your own auth is usually bad advice, and here are the specific conditions
-   under which it is fine: the data is not credentials, there is no write path
-   that harms anyone but you, and you use an `HttpOnly` `Secure` `SameSite=Lax`
-   cookie holding an HMAC — not the password — compared in constant time. Meet
-   those and the realistic threat is "someone stumbles on the URL," which a
-   password solves completely.
+- `CRON_SECRET` in the environment. Vercel sends it as a bearer token on every
+  scheduled invocation, and `api/cron.js` **fails closed** — an unset secret means
+  the route refuses to run at all, rather than quietly becoming public. That is
+  the opposite of the usual default and it is deliberate.
+- If the first scheduled run comes back 401 from the edge rather than from your
+  code, the fix is Settings → Deployment Protection → **Protection Bypass for
+  Automation**, which issues a secret Vercel passes as `x-vercel-protection-bypass`.
 
-3. **Auth.js with Google, allowlisting your address.** Battle-tested, free, and
-   you already have the Google account. Costs an afternoon and a dependency.
-
-**Recommendation: (2) now, (3) if you ever share it.** A single-user page with
-no dangerous write path does not need an identity provider, and pretending
-otherwise is how a weekend project turns into a month.
-
-Separately and non-negotiably: the cron endpoint is not a browser request and
-needs its own secret. Put `CRON_SECRET` in the environment, have Vercel send it
-as a bearer token, and reject the route without it — otherwise anyone who finds
-`/api/cron` can trigger your email.
+Pro also lifts the once-a-day cron ceiling, so the 1st-and-15th schedule is
+comfortable rather than borderline, and you could move to weekly later without
+changing plans.
 
 ## The reminder, done properly
 
@@ -118,59 +114,76 @@ This replaces the Claude Routine, and fixes the problem we hit: the Routine
 cannot reach Gmail from this organization, so it currently pushes to your phone
 instead of emailing. On Vercel that constraint disappears.
 
-- **Vercel Cron** — Hobby allows at most one run per day. Your `0 13 1,15 * *`
-  is twice a month, comfortably inside the limit, so it deploys on the free plan.
-  Fire times are approximate on Hobby; it may run within the hour, which does not
-  matter for this.
+- **Vercel Cron** — already configured in `vercel.json` as `0 13 1,15 * *`,
+  which is 9am Eastern on the 1st and the 15th. Pro has no once-a-day ceiling,
+  so this is well inside the limits.
 - **Resend** — 3,000 emails a month free, 100 a day. You need two. Sending from
   your own address means verifying a domain; `onboarding@resend.dev` works
   immediately if you do not have one and do not mind the from-address.
 
-The cron handler is about thirty lines: work out today's period keys, `select`
-the ticks for them, diff against the item list, send what is missing. The
-period-key logic already exists in `pages/checklist.html` — lift it rather than
-rewrite it.
+`api/cron.js` does the work: today's period keys, one `select`, diff against
+`lib/items.js`, send what is missing. Its `buildReminder()` is a pure function
+taking ticks and a date, so the email can be checked without a database or an
+email provider — which is how the December Uber Cash bump and the all-clear case
+were verified.
 
 ## Do not migrate to Next.js
 
 The tempting move is a framework. Resist it.
 
-Both pages are single self-contained HTML files that work by opening them. That
-portability is worth keeping — it is why they run as Claude Artifacts *and* will
-run on Vercel *and* will run off a USB stick. Rebuilding them as React routes
-buys nothing a user would notice.
+`public/index.html` is one self-contained file that works by being opened. That
+portability is worth keeping — it is why it runs as a Claude Artifact *and* on
+Vercel *and* off a USB stick. Rebuilding it as React routes buys nothing a user
+would notice.
 
 ```
 public/
-  index.html          -> checklist
-  wallet.html
+  index.html          both tabs in one file: the checklist and the card guide
 api/
-  ticks.js            GET  -> rows for the given period keys
-                      POST -> upsert or delete one tick
+  ticks.js            GET  -> ticks for the given period keys
+                      POST -> add or remove one tick
   cron.js             GET  -> the 1st/15th reminder, bearer-token gated
-  auth.js             POST -> set the session cookie
-vercel.json           cron schedule + the /api rewrites
+lib/
+  items.js            the item list the reminder reads
+  periods.js          reset clocks, mirroring the page exactly
+  db.js               Neon client and the two queries
+db/schema.sql         two tables, run once
+scripts/check-drift.mjs   fails if the page and lib/items.js disagree
+vercel.json           the cron schedule
 ```
 
+No `auth.js` — Deployment Protection handles that at the edge.
+
 Vercel serves `public/` statically and `api/` as functions with no config. The
-only change inside the pages is swapping the `claude.use("db")` block for a
-`fetch("/api/ticks")` adapter with the same shape — around twenty lines, and the
-`localStorage` fallback stays exactly as it is.
+page already picks its storage at runtime — it tries `/api/ticks`, falls back to
+the Artifact store, and falls back again to `localStorage` alone — so the same
+file works in all three places without a build flag.
 
 ## What it costs
 
-Vercel Hobby, Neon Free and Resend Free: **$0**, and nothing here approaches a
-paid tier. The one caveat is that Vercel's Hobby plan is for non-commercial use,
-which a personal perk tracker plainly is.
+Vercel Pro you are already paying for at $20/month. Neon Free and Resend Free
+add **nothing** — this app is far below both free tiers and will stay there.
 
-## Order to build it
+## Deploying it
 
-1. Neon project, run the two `create table` statements.
-2. `api/ticks.js`, and the fetch adapter in `checklist.html`. Confirm a tick
-   survives a hard reload in a private window.
-3. The password gate. Do this before the domain is public, not after.
-4. `api/cron.js` and Resend. Trigger it by hand before trusting the schedule.
-5. Turn off the Claude Routine so you are not reminded twice.
+The code is written. What is left is account setup, in this order:
 
-Step 2 is the one that proves the idea. If a tick made on your phone shows up on
-your laptop, everything else is plumbing.
+1. **Neon.** Vercel dashboard → Storage → Neon. Creating it from Vercel sets
+   `DATABASE_URL` automatically. Then run `db/schema.sql` in Neon's SQL editor.
+2. **Deployment Protection.** Settings → Deployment Protection → Password.
+   Do this before the domain is reachable, not after.
+3. **`CRON_SECRET`.** Settings → Environment Variables. Any random 16+ character
+   string; `openssl rand -hex 24` if you want one. Without it the reminder route
+   refuses to run.
+4. **Resend.** Sign up, create an API key, set `RESEND_API_KEY`. Sending from
+   your own address needs a verified domain; `onboarding@resend.dev` works
+   immediately if you would rather not bother yet.
+5. **Deploy**, then hit `/api/cron` by hand with the bearer token to confirm the
+   email lands before you trust the schedule:
+   ```
+   curl -H "Authorization: Bearer $CRON_SECRET" https://YOUR-APP.vercel.app/api/cron
+   ```
+6. **Turn off the Claude Routine** so you are not reminded twice.
+
+The round-trip in step 1 is the part that proves the idea, and it is already
+tested: with `localStorage` wiped entirely, ticks come back from the server.

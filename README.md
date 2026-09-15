@@ -1,73 +1,78 @@
-# Perks Tracker
+# Perk Tracker
 
-A recurring-credit tracker for a ten-card wallet. The premise: credit card perks
-are not lost to bad decisions, they are lost to a calendar nobody watches. Every
-credit here belongs to a period, and the tracker's only job is to show you which
-periods are about to close with money still in them.
+A monthly credit card perk checklist that resets on its own, and a guide to which
+card to pull out for any given purchase. Ten cards, $1,385 in annual fees,
+~$3,900 of recurring credits sitting against them.
 
-## The design decisions that matter
+Live as a Claude Artifact:
+**[Perk Tracker](https://claude.ai/code/artifact/ad1a8cc1-badd-4e94-9fce-a304f4f9d583)**
 
-**Deadline-first, not card-first.** The default view is one queue of every open
-credit, ranked by how soon it expires and how much is on it. Cards are a filter,
-not the organising principle — because money leaks on a calendar, not on a card.
+## What it is
 
-**Redemptions are scoped to a period key.** Marking a credit used writes against
-`perkId::periodKey` — `amex_resy::2026-Q3`, `amex_uber_cash::2026-09`. When the
-calendar rolls, the new period has no record and the credit is simply open again.
-There is no reset button to forget, and an August checkmark can never make
-September look handled.
+One page, two tabs.
 
-**Partial redemption.** Spend $40 of the $100 Resy credit and the row shows $60
-still open. A boolean would hide that $60.
+**This month** — the tick list. Nine monthly credits worth $95 ($115 in
+December), then anything non-monthly closing within six weeks, then the long tail
+collapsed out of the way. Tap a row, it is done.
 
-**A tracking start date.** Leakage is only counted from the day you started
-using this. Without that, a fresh install would open by accusing you of losing
-hundreds of dollars in credits you probably did use — a number that is both
-alarming and wrong.
+**Which card** — every earn rate above 1×, converted to cents per dollar, because
+a raw multiplier is meaningless across currencies: 3× SkyMiles is worth less than
+2× Membership Rewards. The point valuations are editable, since they are
+estimates rather than facts, and every ranking recomputes when you change them.
 
-**Unknown beats guessed.** Two credits reset on an account anniversary rather
-than January 1. Until you enter those dates in Setup, those credits show as
-locked rather than inventing a deadline.
+## Why it resets by itself
+
+A tick is stored against the period it belongs to — `uber` in `2026-09`, `resy`
+in `2026-Q3`, `csph` in `acsph2025`. When the calendar turns over, the new period
+has no rows and the list is simply open again. There is no reset button to
+forget, and an August tick can never make September look handled.
+
+That one idea is most of the design.
 
 ## Layout
 
 ```
-src/data/perks.js    Source of truth — cards, perks, setup gates, thresholds
-src/lib/periods.js   Reset clocks: period keys, bounds, days remaining
-src/PerkTracker.jsx  UI
+public/index.html          the whole app: both tabs, no build step, no dependencies
+api/ticks.js               read and write ticks
+api/cron.js                the 1st and 15th reminder
+lib/items.js               the item list the reminder reads
+lib/periods.js             reset clocks, mirroring the page exactly
+lib/db.js                  Neon client
+db/schema.sql              two tables
+scripts/check-drift.mjs    fails if the page and lib/items.js disagree
+docs/hosting.md            the Vercel and Neon setup, and why
 ```
 
-Changing a credit amount or adding a card means editing `src/data/perks.js` and
-nothing else. Every total on every tab is derived from it.
+`public/index.html` is self-contained — open it in a browser and it works. It
+finds its storage in whichever of three homes exists: this app's own API, the
+Claude Artifact store, or `localStorage` alone. It renders from the local copy
+first and reconciles with the server afterwards, so a cold serverless database
+never blocks the first paint.
 
-## Tabs
-
-- **Now** — the urgency queue. Log a partial amount or mark a credit fully used.
-- **Cards** — fee against captured value, per card, plus the standing benefits
-  that need no tracking so they do not read as omissions.
-- **Value** — captured vs. fees, a leak report, and the places the headline
-  totals mislead.
-- **Setup** — enrollment gates, anniversary dates, the Global Entry cycle, spend
-  thresholds, and an annual re-verification prompt.
-
-## Data and privacy
-
-Everything lives in `localStorage` in one browser. Nothing is transmitted, and
-no account or card numbers are stored — only credit amounts and dates you enter.
-Clearing site data clears the tracker.
-
-## Verify the terms annually
-
-Issuers change perks constantly. `VERIFIED_ON` in `src/data/perks.js` drives a
-prompt on the Setup tab once the data is over a year old. Credits carrying
-`needsVerification: true` were added from published issuer terms rather than the
-owner's own records — confirm them against a statement, then drop the flag.
-
-## Running it
+## Working on it
 
 ```bash
 npm install
-npm run dev      # http://localhost:5173
-npm run build
-npm run lint
+npm run check      # the page and lib/items.js must agree
+npm run dev        # vercel dev, needs the Vercel CLI
 ```
+
+`npm run check` exists because the item list lives in two places on purpose: the
+page keeps an inline copy so it stays one portable file, and the reminder reads
+`lib/items.js`. Two copies drift. The check fails loudly when they do.
+
+## Verify the terms once a year
+
+Issuers change perks constantly — Amex refreshed the Platinum in late 2025, Chase
+the Sapphire Preferred in June 2026, Bilt relaunched in February 2026. Rates here
+were checked against issuer terms in September 2026.
+
+Two rates are set by you rather than the issuer and will be wrong the moment you
+change them: the **Bilt 3× category** (groceries or dining, one choice per
+calendar year — currently groceries) and the **BofA 3% category**, re-chosen
+monthly.
+
+## Privacy
+
+No card numbers, no account numbers, no credentials — only credit amounts and
+dates. Hosted, it sits behind Vercel Deployment Protection.
