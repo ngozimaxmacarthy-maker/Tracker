@@ -24,7 +24,7 @@ Everything below follows from it.
 
 | | |
 |---|---|
-| Rows written per year | ~130 (9 monthly items × 12, plus ~20 non-monthly) |
+| Rows written per year | ~115 (8 monthly items × 12, plus ~20 non-monthly) |
 | Bytes per year | ~15 KB |
 | Neon Free storage | 0.5 GB per project |
 | Years before you notice | roughly thirty thousand |

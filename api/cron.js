@@ -6,7 +6,8 @@ const TO = process.env.REMINDER_TO || "ngozi.maxmacarthy@gmail.com";
 const FROM = process.env.REMINDER_FROM || "onboarding@resend.dev";
 const CHECKLIST_URL = process.env.CHECKLIST_URL || "https://claude.ai/code/artifact/ad1a8cc1-badd-4e94-9fce-a304f4f9d583";
 
-const money = (n) => `$${Math.round(n).toLocaleString()}`;
+// Cents only when there are cents: $95, $14.10, $1,385.
+const money = (n) => `$${Math.abs(n % 1) > 0.001 ? n.toFixed(2) : n.toLocaleString()}`;
 
 /** Today's date as it reads in New York, so period keys never straddle a day. */
 function nowInNY() {

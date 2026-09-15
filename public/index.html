@@ -50,6 +50,14 @@
   .shell { max-width: 880px; margin: 0 auto; padding-inline: 20px; padding-block: 18px 80px; }
   .list-wrap { max-width: 620px; }
 
+  .preview {
+    background: var(--goldBg); border: 1px solid var(--yellow); border-radius: 10px;
+    padding: 11px 14px; margin-bottom: 20px; font-size: 13.5px; color: var(--gold);
+    line-height: 1.6;
+  }
+  .preview b { color: var(--ink); }
+  .preview a { color: var(--blue); }
+
   /* ── Tabs ─────────────────────────────────────────────────── */
   .tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--hair);
           margin-bottom: 26px; overflow-x: auto; }
@@ -328,6 +336,7 @@
 
   <section id="tab-list" role="tabpanel" aria-labelledby="tab-btn-list">
     <div class="list-wrap">
+      <p class="preview" id="preview-bar" hidden></p>
 <div class="mast">
     <div>
       <p class="eyebrow">Perk checklist</p>
@@ -470,8 +479,7 @@
     united: "United Explorer",
     delta:  "Delta Gold Business",
     csp:    "Sapphire Preferred",
-    bilt:   "Bilt Obsidian",
-    bofa:   "BofA Cash Rewards"
+    bilt:   "Bilt Obsidian"
   };
 
   // cad: m=monthly q=quarterly h=semiannual y=calendar year
@@ -479,12 +487,11 @@
   var ITEMS = [
     { id:"uber",   card:"plat",   name:"Uber Cash",                 amt:15,  cad:"m", dec:35 },
     { id:"ent",    card:"plat",   name:"Digital entertainment",     amt:25,  cad:"m" },
-    { id:"wmt",    card:"plat",   name:"Walmart+",                  amt:20,  cad:"m" },
+    { id:"wmt",    card:"plat",   name:"Walmart+",                  amt:14.10, cad:"m", hint:"On autopay, so the charge and the credit both happen by themselves. Tick it to confirm \u2014 there is nothing to go and do." },
     { id:"dride",  card:"delta",  name:"Rideshare",                 amt:10,  cad:"m" },
     { id:"insta",  card:"united", name:"Instacart",                 amt:10,  cad:"m" },
     { id:"uride",  card:"united", name:"Rideshare",                 amt:5,   cad:"m" },
     { id:"dashcr", card:"csp",    name:"DoorDash credit",           amt:10,  cad:"m", hint:"Non-restaurant orders only — grocery, convenience, retail. Needs DashPass active, and you have to toggle the offer on before you submit the order." },
-    { id:"bofa",   card:"bofa",   name:"Pick your 3% category",     amt:0,   cad:"m", free:"choose one" },
     { id:"bilt899",card:"bilt",   name:"Spend $899 on the Bilt card", amt:0, cad:"m", free:"unlocks 1.25×", hint:"Non-housing spend is what sets your Bilt earn rate. Clear $899 and your HOA payment earns 1.25× instead of dropping toward zero." },
 
     { id:"resy",   card:"plat",   name:"Resy dining",               amt:100, cad:"q" },
@@ -526,7 +533,21 @@
 
   var MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
   var DAY = 86400000;
-  var now = new Date();
+
+  // ?as=YYYY-MM-DD pretends it is another day, so you can see a reset without
+  // waiting for one. Read-only: ticking is disabled while time-travelling, so a
+  // preview can never write a tick into a period you are not actually in.
+  var PREVIEW = null;
+  try {
+    var asParam = new URLSearchParams(location.search).get("as");
+    if (asParam && /^\d{4}-\d{2}-\d{2}$/.test(asParam)) {
+      var bits = asParam.split("-").map(Number);
+      var probe = new Date(bits[0], bits[1] - 1, bits[2]);
+      if (!isNaN(probe)) PREVIEW = probe;
+    }
+  } catch (e) { /* no URL access; carry on with the real date */ }
+
+  var now = PREVIEW || new Date();
   var today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   var Y = today.getFullYear(), M = today.getMonth();
 
@@ -558,12 +579,16 @@
     if (it.dec && p.end && p.end.getMonth() === 0) return it.dec; // December pays more
     return it.amt;
   }
-  var money = function (n) { return "$" + n.toLocaleString(); };
+  // Cents only when there are cents: $95, $14.10, $1,385.
+  var money = function (n) {
+    return "$" + (Math.abs(n % 1) > 0.001 ? n.toFixed(2) : n.toLocaleString());
+  };
 
   // ── State: { periodKey: Set(itemIds) }. Mirrored to localStorage so the
   //    page renders filled in immediately, then reconciles with the store.
   var state = {};
   var inflight = {};
+  var dirty = {};          // periods written this session; a slower server reply must not clobber them
   var db = null;
   var backend = "local";   // "api" on Vercel, "artifact" on claude.ai, else local only
 
@@ -588,10 +613,12 @@
     var p = periodOf(it);
     if (!state[p.key]) state[p.key] = new Set();
     if (on) state[p.key].add(it.id); else state[p.key].delete(it.id);
+    if (!PREVIEW) dirty[p.key] = true;
     saveLocal();
     push(p.key, it.id, on);
   }
   function push(key, itemId, ticked) {
+    if (PREVIEW) return;                      // never write from a preview
     if (backend === "api") {
       inflight[key] = (inflight[key] || 0) + 1;
       fetch("/api/ticks", {
@@ -627,7 +654,7 @@
     if (it.gate) chip = '<span class="chip gate">locked</span>';
 
     return '<label class="row' + (done ? " done" : "") + '" data-id="' + it.id + '">'
-      + '<input type="checkbox" id="chk-' + it.id + '"' + (done ? " checked" : "") + '>'
+      + '<input type="checkbox" id="chk-' + it.id + '"' + (done ? " checked" : "") + (PREVIEW ? " disabled" : "") + '>'
       + '<span class="body">'
       +   '<span class="name">' + it.name + chip + '</span>'
       +   '<span class="sub">' + bits.join("  ·  ") + '</span>'
@@ -661,6 +688,14 @@
     var openLater = later.filter(function (r) { return !isDone(r.it); }).length;
     document.getElementById("later-cnt").textContent = openLater + " open";
 
+    renderSetup();
+    refreshSummary();
+  }
+
+  // Everything that depends on what is ticked, but not on the list's shape.
+  function refreshSummary() {
+    var monthly = ITEMS.filter(function (i) { return i.cad === "m"; });
+
     // Header maths — monthly only, because that is what the month is about.
     var left = 0, doneN = 0;
     monthly.forEach(function (it) {
@@ -679,6 +714,17 @@
     fill.classList.toggle("full", doneN === monthly.length);
     document.getElementById("prog-count").textContent = doneN + " of " + monthly.length + " done";
 
+    var pv = document.getElementById("preview-bar");
+    if (pv) {
+      pv.hidden = !PREVIEW;
+      if (PREVIEW) {
+        pv.innerHTML = "Previewing <b>" + MONTHS[M] + " " + today.getDate() + ", " + Y
+          + "</b>. This is what the list looks like on that date \u2014 credits whose period "
+          + "has turned over are open again. Ticking is off while previewing. "
+          + "<a href=\"" + location.pathname + "\">Back to today</a>.";
+      }
+    }
+
     var badge = document.getElementById("tab-badge");
     if (badge) {
       var openN = monthly.length - doneN;
@@ -691,34 +737,58 @@
     resetEl.textContent = dLeft === 1 ? "resets tomorrow" : "resets in " + dLeft + " days";
     resetEl.className = (dLeft <= 5 && doneN < monthly.length) ? "urgent" : "";
 
-    // Setup list
+    var later = ITEMS.filter(function (i) { return i.cad !== "m"; })
+      .map(function (i) { return { it: i, d: daysTo(periodOf(i).end) }; })
+      .filter(function (r) { return !(!r.it.gate && r.d !== null && r.d <= 45); });
+    var lc = document.getElementById("later-cnt");
+    if (lc) lc.textContent = later.filter(function (r) { return !isDone(r.it); }).length + " open";
+
+    var openSetup = SETUP.filter(function (x) { return !(state["setup"] && state["setup"].has(x.id)); }).length;
+    var sc = document.getElementById("setup-cnt");
+    if (sc) sc.textContent = openSetup ? openSetup + " left" : "all done";
+  }
+
+  function renderSetup() {
     document.getElementById("setup").innerHTML = SETUP.map(function (s) {
       var done = !!(state["setup"] && state["setup"].has(s.id));
       return '<label class="setup-item' + (done ? " done" : "") + '" data-setup="' + s.id + '">'
-        + '<input type="checkbox" id="chk-' + s.id + '"' + (done ? " checked" : "") + '>'
+        + '<input type="checkbox" id="chk-' + s.id + '"' + (done ? " checked" : "") + (PREVIEW ? " disabled" : "") + '>'
         + '<span><span class="st-name">' + s.t + '</span><span class="st-sub">' + s.s + '</span></span>'
         + '</label>';
     }).join("");
-    var openSetup = SETUP.filter(function (s) { return !(state["setup"] && state["setup"].has(s.id)); }).length;
-    document.getElementById("setup-cnt").textContent = openSetup ? openSetup + " left" : "all done";
   }
 
-  // Delegated so re-rendering never drops handlers.
+  // Delegated, so it survives a re-render.
+  //
+  // A tick deliberately does NOT rebuild the list. Rebuilding replaced the very
+  // node being clicked, so a quick second tap landed on a detached element and
+  // was lost. Toggling one class and refreshing the summary is both correct and
+  // immune to that. Full renders stay for the cases that really do change the
+  // shape of the page: first paint, and a reply from the server.
   document.addEventListener("change", function (e) {
     var el = e.target;
     if (el.type !== "checkbox") return;
+
     var row = el.closest("[data-id]");
     if (row) {
       var it = ITEMS.filter(function (i) { return i.id === row.getAttribute("data-id"); })[0];
-      if (it) { setDone(it, el.checked); render(); }
+      if (!it) return;
+      setDone(it, el.checked);
+      row.classList.toggle("done", el.checked);
+      refreshSummary();
       return;
     }
+
     var srow = el.closest("[data-setup]");
     if (srow) {
       var sid = srow.getAttribute("data-setup");
       if (!state["setup"]) state["setup"] = new Set();
       if (el.checked) state["setup"].add(sid); else state["setup"].delete(sid);
-      saveLocal(); push("setup", sid, el.checked); render();
+      if (!PREVIEW) dirty["setup"] = true;
+      saveLocal();
+      push("setup", sid, el.checked);
+      srow.classList.toggle("done", el.checked);
+      refreshSummary();
     }
   });
 
@@ -742,10 +812,20 @@
   }
 
   function adoptServer(byKey) {
+    // Only redraw when the server actually tells us something new. On a normal
+    // load it agrees with what we already had, and rebuilding the list for no
+    // reason would replace a row the moment someone taps it.
+    var changed = false;
     Object.keys(byKey).forEach(function (k) {
-      if (inflight[k]) return;                 // our own write is still settling
-      state[k] = new Set(byKey[k] || []);
+      if (inflight[k] || dirty[k]) return;     // our own writes beat a slower reply
+      var incoming = byKey[k] || [];
+      var have = state[k] || new Set();
+      if (incoming.length !== have.size || incoming.some(function (id) { return !have.has(id); })) {
+        state[k] = new Set(incoming);
+        changed = true;
+      }
     });
+    if (!changed) return;
     saveLocal();
     render();
   }
@@ -773,9 +853,12 @@
       backend = "artifact";
       allKeys().forEach(function (k) {
         db.doc("checks/" + k).onSnapshot(function (snap) {
-          if (inflight[k]) return;
+          if (inflight[k] || dirty[k]) return;
           var d = snap.exists ? snap.data() : null;
-          state[k] = new Set((d && d.done) || []);
+          var incoming = (d && d.done) || [];
+          var have = state[k] || new Set();
+          if (incoming.length === have.size && !incoming.some(function (id) { return !have.has(id); })) return;
+          state[k] = new Set(incoming);
           saveLocal();
           render();
         }, function () { /* listener died; local state carries on */ });
@@ -893,7 +976,7 @@
       bens:["No expiring credits, no annual fee, no categories to manage."] },
 
     { id:"bofa",    name:"BofA Cash Rewards", issuer:"Bank of America", fee:0, cur:"cash",
-      purpose:"Only pays off if you change the 3% category to match what you are about to spend on, and stay under the quarterly cap.",
+      purpose:"You have said you barely use this one, so it is here for completeness. It only pays off if you change the 3% category to match what you are about to spend on, and stay under the quarterly cap \u2014 which is exactly why it came off the monthly checklist.",
       earn:[ [3,"One category you choose each month","gas, online shopping, dining, travel, drugstores or home improvement"],
              [2,"Groceries and wholesale clubs",""] ],
       bens:["The 3% and 2% rates share a $2,500 cap per quarter. Past that everything drops to 1%.",

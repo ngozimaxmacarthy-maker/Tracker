@@ -11,9 +11,12 @@ Live as a Claude Artifact:
 
 One page, two tabs.
 
-**This month** — the tick list. Nine monthly credits worth $95 ($115 in
+**This month** — the tick list. Eight monthly credits worth $89.10 ($109.10 in
 December), then anything non-monthly closing within six weeks, then the long tail
 collapsed out of the way. Tap a row, it is done.
+
+Append `?as=2026-10-01` to any date to preview it. Ticking is disabled while
+previewing, so looking at next month can never write a tick into it.
 
 **Which card** — every earn rate above 1×, converted to cents per dollar, because
 a raw multiplier is meaningless across currencies: 3× SkyMiles is worth less than
