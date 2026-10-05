@@ -7,7 +7,7 @@ const KEY_OK = /^(\d{4}(-(\d{2}|Q[1-4]|H[1-2]))?|a[a-z0-9]{1,20}\d{4}|once|cycle
 
 // The setup checklist lives outside the item list.
 const SETUP_IDS = new Set([
-  "s_ent", "s_wmt", "s_resy", "s_lulu", "s_uber", "s_air", "s_dash", "s_eqx",
+  "s_ent", "s_wmt", "s_resy", "s_lulu", "s_uber", "s_air", "s_dash", "s_grub", "s_eqx",
 ]);
 
 export default async function handler(req, res) {
