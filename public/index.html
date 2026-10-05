@@ -493,6 +493,9 @@
     { id:"uride",  card:"united", name:"Rideshare",                 amt:5,   cad:"m" },
     { id:"dashcr", card:"csp",    name:"DoorDash credit",           amt:10,  cad:"m", hint:"Non-restaurant orders only — grocery, convenience, retail. Needs DashPass active, and you have to toggle the offer on before you submit the order." },
     { id:"bilt899",card:"bilt",   name:"Spend $899 on the Bilt card", amt:0, cad:"m", free:"unlocks 1.25×", hint:"Non-housing spend is what sets your Bilt earn rate. Clear $899 and your HOA payment earns 1.25× instead of dropping toward zero." },
+    { id:"bcLyft", card:"bilt",   name:"Bilt Cash to Lyft",          amt:10, cad:"m", hint:"From your Bilt Cash balance. Resets midnight PT on the 1st and does not roll over." },
+    { id:"bcWalg", card:"bilt",   name:"Bilt Cash to Walgreens",     amt:10, cad:"m", hint:"From your Bilt Cash balance. Resets midnight PT on the 1st and does not roll over." },
+    { id:"bcGrub", card:"bilt",   name:"Bilt Cash to Grubhub",       amt:10, cad:"m", hint:"From your Bilt Cash balance. Redeeming emails you a $10 promo code that dies at the end of the same month — so redeem it when you are about to order, not before. Stacks on top of Grubhub+ free delivery." },
 
     { id:"resy",   card:"plat",   name:"Resy dining",               amt:100, cad:"q" },
     { id:"lulu",   card:"plat",   name:"lululemon",                 amt:75,  cad:"q" },
@@ -513,6 +516,7 @@
 
     { id:"dflt",   card:"delta",  name:"Delta flight credit",       amt:200, cad:"y", gate:"after $10k spend" },
     { id:"tbank",  card:"united", name:"United TravelBank",         amt:100, cad:"y", gate:"after $10k spend" },
+    { id:"bcDrain",card:"bilt",   name:"Spend Bilt Cash down to $100", amt:0, cad:"y", free:"before Dec 31", hint:"Only $100 of Bilt Cash rolls into next year — everything above it is forfeited on Dec 31. The Lyft, Walgreens and Grubhub credits only drain $30 a month between them, so a large balance needs other routes too: Blacklane rides, fitness classes in the Bilt app, or converting to points against rent." },
 
     { id:"atv",    card:"csp",    name:"Apple TV, 12 months free",  amt:99,  cad:"o", by:"2026-12-31" },
     { id:"dash",   card:"csp",    name:"DoorDash DashPass",         amt:0,   cad:"o", by:"2027-12-31", free:"free through 2027" },
@@ -950,6 +954,7 @@
       bens:["Housing payments earn points with no transaction fee — the reason the card exists.",
             "The 3× category is one choice between groceries and dining, locked for the calendar year. Yours is groceries, so dining on this card earns 1×.",
             "$50 Bilt Travel hotel credit twice a year, 2-night minimum.",
+            "Bilt Cash is separate from points and is use-it-or-lose-it: $10 a month each to Lyft, Walgreens and Grubhub, and only $100 of the balance survives into the next calendar year.",
             "Your HOA rate is set by non-housing spend. $899 a month is your threshold for the full 1.25×."] },
 
     { id:"jetblue", name:"JetBlue Card", issuer:"Barclays", fee:0, cur:"jetblue",
