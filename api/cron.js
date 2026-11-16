@@ -33,7 +33,7 @@ export function buildReminder(ticks, now) {
     .filter((i) => i.cad !== "m" && !i.gate && !isTicked(i))
     .map((i) => ({ item: i, period: periodOf(i, now) }))
     .map((x) => ({ ...x, days: daysLeft(x.period, now) }))
-    .filter((x) => x.days !== null && x.days <= 45)
+    .filter((x) => x.days !== null && x.days <= 60)
     .sort((a, b) => a.days - b.days);
 
   const firstOfMonth = dayOfMonth <= 7;

@@ -362,7 +362,7 @@
 
   <div class="grp" id="soon-grp" hidden>
     <h2>Closing soon</h2>
-    <p class="grp-note">Not monthly, but the window shuts within six weeks.</p>
+    <p class="grp-note">Not monthly, but the window shuts within two months.</p>
     <div class="sheet" id="soon"></div>
   </div>
 
@@ -521,6 +521,7 @@
 
     { id:"atv",    card:"csp",    name:"Apple TV, 12 months free",  amt:99,  cad:"o", by:"2026-12-31" },
     { id:"dash",   card:"csp",    name:"DoorDash DashPass",         amt:0,   cad:"o", by:"2027-12-31", free:"free through 2027" },
+    { id:"dwelcome",card:"delta", name:"Spend $2,000 on the Delta Gold Business", amt:0, cad:"o", by:"2026-12-31", free:"90,000 miles", hint:"90,000 SkyMiles, worth roughly $990 \u2014 far more than every credit left this year put together, so this outranks the Bilt $899 if the two compete for the same spend. CONFIRM THE REAL DEADLINE in your Amex account: welcome offers run a fixed number of months from account opening, not to Dec 31, so yours may fall earlier. The San Diego flights and the Delta Stays hotel both count toward it, and a statement credit does not claw back qualifying spend \u2014 so the $150 hotel counts and comes back." },
     { id:"udrain", card:"united", name:"Empty the United Explorer before downgrading", amt:0, cad:"o", by:"2027-03-01", free:"before March", hint:"Downgrading forfeits whatever is left behind. Still unused: both Club passes, the $100 JSX credit, and the $100 United Hotels credit for the card year running to March. The $150 fee posts at the March anniversary, and Chase normally refunds it if you product-change shortly after it lands." },
 
     { id:"ge",     card:"plat",   name:"Global Entry or PreCheck",  amt:120, cad:"4", hint:"One card can reimburse one application every four years. Platinum, Sapphire Preferred and United Explorer all offer it." }
@@ -684,7 +685,7 @@
       return (a.d === null ? 9e9 : a.d) - (b.d === null ? 9e9 : b.d);
     });
 
-    var soon = rest.filter(function (r) { return !r.it.gate && r.d !== null && r.d <= 45; });
+    var soon = rest.filter(function (r) { return !r.it.gate && r.d !== null && r.d <= 60; });
     var later = rest.filter(function (r) { return soon.indexOf(r) === -1; });
 
     document.getElementById("monthly").innerHTML = monthly.map(rowHtml).join("");
@@ -746,7 +747,7 @@
 
     var later = ITEMS.filter(function (i) { return i.cad !== "m"; })
       .map(function (i) { return { it: i, d: daysTo(periodOf(i).end) }; })
-      .filter(function (r) { return !(!r.it.gate && r.d !== null && r.d <= 45); });
+      .filter(function (r) { return !(!r.it.gate && r.d !== null && r.d <= 60); });
     var lc = document.getElementById("later-cnt");
     if (lc) lc.textContent = later.filter(function (r) { return !isDone(r.it); }).length + " open";
 
